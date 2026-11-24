@@ -28,6 +28,8 @@ SECTIONS = ["binexp", "rev"]
 ASSETS_DIR = "gitbook-assets"
 TOP_FILES = ["README.md", "GLOSSARY.md"]
 HINT_KINDS = {"info": "note", "success": "tip", "warning": "warning", "danger": "danger"}
+# 囲みの見出し(日本語)。GitBook の style 名 → 表示する見出し
+HINT_TITLES = {"info": "情報", "success": "ヒント", "warning": "注意", "danger": "危険"}
 
 FENCE_RE = re.compile(r"^\s*(`{3,}|~{3,})(.*)$")
 HINT_OPEN = re.compile(r'^(\s*)\{%\s*hint(?:\s+style="([^"]*)")?\s*%\}\s*$')
@@ -153,7 +155,7 @@ def convert(lines, srcdir, stats):
                 while inner and not inner[-1].strip():
                     inner.pop()
                 ensure_blank()
-                out.append("%s!!! %s" % (m.group(1), kind))
+                out.append('%s!!! %s "%s"' % (m.group(1), kind, HINT_TITLES.get(style, "情報")))
                 out.append("")
                 out.extend(indent(inner, m.group(1) + "    "))
                 out.append("")

@@ -1,0 +1,219 @@
+site_name: サイバーセキュリティノート(日本語訳)
+site_description: ir0nstone/cybersec-notes の Pwn(binexp)と Rev(rev)の日本語訳
+site_url: https://0xff-minusone.github.io/cybersec-notes-ja/
+repo_url: https://github.com/0xff-minusone/cybersec-notes-ja
+repo_name: 0xff-minusone/cybersec-notes-ja
+# 前処理(tools/prepare_docs.py)で作る変換済みの Markdown
+docs_dir: .site-src
+site_dir: site
+# 画像などが相対パスのまま解決されるよう、ページを foo.html の形で出力する
+use_directory_urls: false
+# (画像は前処理で gitbook-assets/ に改名してコピーする。ドットのディレクトリは出力されないため)
+
+copyright: >-
+  日本語訳。原著:
+  <a href="https://github.com/ir0nstone/cybersec-notes">ir0nstone/cybersec-notes</a>
+  (Andrej Ljubic)/ライセンス:
+  <a href="https://github.com/0xff-minusone/cybersec-notes-ja/blob/main/LICENSE.md">GPL-3.0</a>
+
+theme:
+  name: material
+  language: ja
+  palette:
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      toggle:
+        icon: material/brightness-7
+        name: ダークモードに切り替え
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      toggle:
+        icon: material/brightness-4
+        name: ライトモードに切り替え
+  features:
+    - navigation.indexes
+    - navigation.top
+    - navigation.tracking
+    - search.highlight
+    - search.suggest
+    - content.code.copy
+
+plugins:
+  - search:
+      lang: ja
+
+markdown_extensions:
+  - admonition
+  - attr_list
+  - md_in_html
+  - tables
+  - toc:
+      permalink: true
+  - pymdownx.details
+  - pymdownx.superfences
+  - pymdownx.highlight:
+      anchor_linenums: true
+  - pymdownx.inlinehilite
+  - pymdownx.tabbed:
+      alternate_style: true
+  - pymdownx.emoji:
+      emoji_index: !!python/name:material.extensions.emoji.twemoji
+      emoji_generator: !!python/name:material.extensions.emoji.to_svg
+
+extra:
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/ir0nstone/cybersec-notes
+      name: 原著(ir0nstone/cybersec-notes)
+
+# nav は SUMMARY.md から `python tools/prepare_docs.py --nav` で生成したもの
+# (リポジトリに含まれない分野の項目は除いてある)
+nav:
+  - "原著(GitHub)": https://github.com/ir0nstone/cybersec-notes
+  - "サイバーセキュリティノート": README.md
+  - "バイナリエクスプロイト":
+    - "スタック":
+        - binexp/stack/README.md
+        - "はじめに": binexp/stack/introduction.md
+        - "ret2win": binexp/stack/ret2win.md
+        - "de Bruijn 列": binexp/stack/de-bruijn-sequences.md
+        - "シェルコード": binexp/stack/shellcode.md
+        - "NOP": binexp/stack/nops.md
+        - "32 ビットと 64 ビット": binexp/stack/32-vs-64-bit.md
+        - "No eXecute (NX)": binexp/stack/no-execute.md
+        - "Return-Oriented Programming (ROP)":
+            - binexp/stack/return-oriented-programming/README.md
+            - "呼び出し規約": binexp/stack/return-oriented-programming/calling-conventions.md
+            - "ガジェット": binexp/stack/return-oriented-programming/gadgets.md
+            - "呼び出し規約の悪用": binexp/stack/return-oriented-programming/exploiting-calling-conventions.md
+            - "ret2libc/ret2system": binexp/stack/return-oriented-programming/ret2libc.md
+            - "スタックアライメント": binexp/stack/return-oriented-programming/stack-alignment.md
+        - "書式文字列バグ": binexp/stack/format-string.md
+        - "スタックカナリア": binexp/stack/canaries.md
+        - "PIE":
+            - binexp/stack/pie/README.md
+            - "Pwntools、PIE、ROP": binexp/stack/pie/pwntools-pie-and-rop.md
+            - "リークが与えられた場合の PIE バイパス": binexp/stack/pie/pie-exploit.md
+            - "PIE バイパス": binexp/stack/pie/pie-bypass.md
+        - "ASLR":
+            - binexp/stack/aslr/README.md
+            - "リークが与えられた場合の ASLR バイパス": binexp/stack/aslr/aslr-bypass-with-given-leak.md
+            - "PLT と GOT": binexp/stack/aslr/plt_and_got.md
+            - "ret2plt による ASLR バイパス": binexp/stack/aslr/ret2plt-aslr-bypass.md
+        - "仮想アドレスと仮想メモリ": binexp/stack/virtual-addresses-and-virtual-memory.md
+        - "GOT Overwrite":
+            - binexp/stack/got-overwrite/README.md
+            - "GOT Overwrite の悪用": binexp/stack/got-overwrite/exploiting-a-got-overwrite.md
+        - "RELRO": binexp/stack/relro.md
+        - "確実なシェルコード":
+            - binexp/stack/reliable-shellcode/README.md
+            - "ROP とシェルコード": binexp/stack/reliable-shellcode/rop-and-shellcode.md
+            - "RSP の利用": binexp/stack/reliable-shellcode/using-rsp.md
+            - "ret2reg":
+                - binexp/stack/reliable-shellcode/ret2reg/README.md
+                - "ret2reg の利用": binexp/stack/reliable-shellcode/ret2reg/using-ret2reg.md
+        - "One Gadget と Malloc Hook": binexp/stack/one-gadgets-and-malloc-hook.md
+        - "システムコール":
+            - binexp/stack/syscalls/README.md
+            - "システムコールを使ったエクスプロイト": binexp/stack/syscalls/exploitation-with-syscalls.md
+            - "Sigreturn-Oriented Programming (SROP)":
+                - binexp/stack/syscalls/sigreturn-oriented-programming-srop/README.md
+                - "SROP の利用": binexp/stack/syscalls/sigreturn-oriented-programming-srop/using-srop.md
+        - "ret2dlresolve":
+            - binexp/stack/ret2dlresolve/README.md
+            - "エクスプロイト": binexp/stack/ret2dlresolve/exploitation.md
+        - "ret2csu":
+            - binexp/stack/ret2csu/README.md
+            - "エクスプロイト": binexp/stack/ret2csu/exploitation.md
+            - "CSU のハードニング": binexp/stack/ret2csu/csu-hardening.md
+        - "ソケット越しのエクスプロイト":
+            - binexp/stack/exploiting-over-sockets/README.md
+            - "エクスプロイト": binexp/stack/exploiting-over-sockets/exploit.md
+            - "Socat": binexp/stack/exploiting-over-sockets/socat.md
+        - "フォークするプロセス": binexp/stack/forking-processes.md
+        - "Stack Pivoting":
+            - binexp/stack/stack-pivoting/README.md
+            - "エクスプロイト":
+                - binexp/stack/stack-pivoting/exploitation/README.md
+                - "pop rsp": binexp/stack/stack-pivoting/exploitation/pop-rsp.md
+                - "leave": binexp/stack/stack-pivoting/exploitation/leave.md
+        - "ポインタ認証 (Pointer Authentication)": binexp/stack/pointer-authentication.md
+        - "Memory Tagging Extension (MTE)": binexp/stack/memory-tagging-extension-mte.md
+        - "Memory Integrity Enforcement": binexp/stack/memory-integrity-enforcement.md
+    - "ヒープ":
+        - binexp/heap/README.md
+        - "ヒープ入門": binexp/heap/introduction-to-the-heap.md
+        - "チャンク": binexp/heap/chunks.md
+        - "チャンクの解放と bin":
+            - binexp/heap/bins/README.md
+            - "fastbin の動作": binexp/heap/bins/operations-of-the-fastbin.md
+            - "そのほかの bin の動作": binexp/heap/bins/chunk-allocation-and-reallocation.md
+        - "top chunk と remainder": binexp/heap/the-top-chunk-and-remainder.md
+        - "malloc の状態": binexp/heap/malloc-state.md
+        - "malloc_consolidate()": binexp/heap/malloc_consolidate.md
+        - "ヒープオーバーフロー":
+            - "heap0": binexp/heap/heap-overflow/heap0.md
+            - "heap1": binexp/heap/heap-overflow/heap1.md
+        - "Unlink Exploit": binexp/heap/unlink-exploit.md
+        - "tcache":
+            - binexp/heap/the-tcache/README.md
+            - "tcache: calloc()": binexp/heap/the-tcache/tcache-calloc.md
+            - "Tcache Poisoning": binexp/heap/the-tcache/tcache-poisoning.md
+        - "The Malloc Maleficarum":
+            - binexp/heap/the-malloc-maleficarum/README.md
+            - "House of Force": binexp/heap/the-malloc-maleficarum/the-house-of-force.md
+        - "tcache のキー": binexp/heap/tcache-keys.md
+        - "Safe Linking": binexp/heap/safe-linking.md
+    - "カーネル":
+        - binexp/kernel/README.md
+        - "はじめに": binexp/kernel/introduction.md
+        - "キャラクタモジュールを書く":
+            - binexp/kernel/writing-a-char-module/README.md
+            - "対話型のキャラクタドライバ": binexp/kernel/writing-a-char-module/a-communicatable-char-driver.md
+            - "IOCTL による対話": binexp/kernel/writing-a-char-module/interactivity-with-ioctl.md
+        - "基本的なカーネル対話問題": binexp/kernel/a-basic-kernel-interaction-challenge.md
+        - "カーネルのコンパイル、カスタマイズ、起動": binexp/kernel/compiling-customising-and-booting-the-kernel.md
+        - "Double-Fetch":
+            - binexp/kernel/double-fetch/README.md
+            - "sleep なしの Double-Fetch": binexp/kernel/double-fetch/double-fetch-without-sleep.md
+        - "SMEP":
+            - binexp/kernel/smep/README.md
+            - "カーネル ROP - SMEP の無効化": binexp/kernel/smep/kernel-rop-disabling-smep.md
+            - "カーネル ROP - カーネル空間での権限昇格": binexp/kernel/smep/kernel-rop-privilege-escalation-in-kernel-space.md
+            - "カーネル ROP - Stack Pivoting": binexp/kernel/smep/kernel-rop-stack-pivoting.md
+        - "SMAP": binexp/kernel/smap.md
+        - "modprobe_path の上書き": binexp/kernel/modprobe_path.md
+        - "KPTI": binexp/kernel/kpti.md
+        - "カーネルヒープ": binexp/kernel/page.md
+        - "ヒープ構造": binexp/kernel/heap-structures.md
+        - "TODO": binexp/kernel/todo.md
+    - "ブラウザエクスプロイト":
+        - "*CTF 2019 - oob-v8":
+            - binexp/browser-exploitation/ctf-2019-oob-v8/README.md
+            - "問題の概要": binexp/browser-exploitation/ctf-2019-oob-v8/the-challenge.md
+        - "picoCTF 2021 - Kit Engine": binexp/browser-exploitation/picoctf-2021-kit-engine.md
+        - "picoCTF 2021 - Download Horsepower": binexp/browser-exploitation/picoctf-2021-download-horsepower.md
+        - "ブラウザのアーキテクチャ":
+            - binexp/browser-exploitation/browser-architecture/README.md
+            - "レンダラの動作": binexp/browser-exploitation/browser-architecture/operation-of-the-renderer.md
+        - "Turbofan 入門":
+            - binexp/browser-exploitation/an-introduction-to-turbofan/README.md
+            - "Typer バグ": binexp/browser-exploitation/an-introduction-to-turbofan/a-typer-bug.md
+    - "メモリ安全性":
+        - binexp/memory-safety/README.md
+        - "C++ のスマートポインタ": binexp/memory-safety/c++-smart-pointers.md
+        - "RAII (Resource Acquisition is Initialization)": binexp/memory-safety/raii-resource-acquisition-is-initialization.md
+        - "ガベージコレクション":
+            - binexp/memory-safety/garbage-collection/README.md
+            - "トレーシングガベージコレクション": binexp/memory-safety/garbage-collection/tracing-garbage-collection.md
+            - "自動参照カウント": binexp/memory-safety/garbage-collection/automatic-reference-counting.md
+        - "Rust": binexp/memory-safety/rust.md
+        - "Python(と C#、Java)": binexp/memory-safety/python-and-c-java.md
+        - "Swift": binexp/memory-safety/swift.md
+        - "サンドボックス化": binexp/memory-safety/sandboxing.md
+    - "動的バイナリ計装": binexp/dynamic-binary-instrumentation.md
+  - "リバースエンジニアリング":
+    - "C++ の文字列": rev/strings-in-c++.md
+    - "C++ のデコンパイルのコツ": rev/c++-decompilation-tricks.md
+    - "ARM のリバースエンジニアリング": rev/reverse-engineering-arm.md
+  - "用語集": GLOSSARY.md

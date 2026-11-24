@@ -15,7 +15,7 @@ static ssize_t auth_read(struct file *filp, char __user *buf, size_t len, loff_t
     printk(KERN_ALERT "[Auth] Attempting to read flag...");
 
     if (authenticated) {
-        copy_to_user(buf, FLAG, sizeof(FLAG));      // ignoring `len` here
+        copy_to_user(buf, FLAG, sizeof(FLAG));      // ここでは `len` を無視している
         return 1;
     }
 

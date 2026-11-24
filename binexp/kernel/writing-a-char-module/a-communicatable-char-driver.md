@@ -10,25 +10,25 @@
 #define DEVICE_NAME "intro"
 #define CLASS_NAME "intro"
 
-// setting up the device
+// デバイスの設定
 int major;
 static struct class*  my_class  = NULL;
 static struct device* my_device = NULL;
 
 static int __init intro_init(void) {
-    major = register_chrdev(0, DEVICE_NAME, &fops);    // explained later
+    major = register_chrdev(0, DEVICE_NAME, &fops);    // 後で説明する
 
     if ( major < 0 )
         printk(KERN_ALERT "[Intro] Error assigning Major Number!");
     
-    // Register device class
+    // デバイスクラスを登録する
     my_class = class_create(THIS_MODULE, CLASS_NAME);
     if (IS_ERR(my_class)) {
         unregister_chrdev(major, DEVICE_NAME);
         printk(KERN_ALERT "[Intro] Failed to register device class\n");
     }
 
-    // Register the device driver
+    // デバイスドライバを登録する
     my_device = device_create(my_class, NULL, MKDEV(major, 0), NULL, DEVICE_NAME);
     if (IS_ERR(my_device)) {
         class_destroy(my_class);
@@ -52,10 +52,10 @@ static int __init intro_init(void) {
 
 ```c
 static void __exit intro_exit(void) {
-    device_destroy(my_class, MKDEV(major, 0));              // remove the device
-    class_unregister(my_class);                             // unregister the device class
-    class_destroy(my_class);                                // remove the device class
-    unregister_chrdev(major, DEVICE_NAME);                  // unregister the major number
+    device_destroy(my_class, MKDEV(major, 0));              // デバイスを削除する
+    class_unregister(my_class);                             // デバイスクラスの登録を解除する
+    class_destroy(my_class);                                // デバイスクラスを削除する
+    unregister_chrdev(major, DEVICE_NAME);                  // メジャー番号の登録を解除する
     printk(KERN_INFO "[Intro] Closing!\n");
 }
 ```
@@ -110,7 +110,7 @@ MODULE_AUTHOR("ir0nstone");
 MODULE_DESCRIPTION("Interactive Drivers");
 MODULE_LICENSE("GPL");
 
-// setting up the device
+// デバイスの設定
 int major;
 static struct class*  my_class  = NULL;
 static struct device* my_device = NULL;
@@ -133,14 +133,14 @@ static int __init intro_init(void) {
     if ( major < 0 )
         printk(KERN_ALERT "[Intro] Error assigning Major Number!");
     
-    // Register device class
+    // デバイスクラスを登録する
     my_class = class_create(THIS_MODULE, CLASS_NAME);
     if (IS_ERR(my_class)) {
         unregister_chrdev(major, DEVICE_NAME);
         printk(KERN_ALERT "[Intro] Failed to register device class\n");
     }
 
-    // Register the device driver
+    // デバイスドライバを登録する
     my_device = device_create(my_class, NULL, MKDEV(major, 0), NULL, DEVICE_NAME);
     if (IS_ERR(my_device)) {
         class_destroy(my_class);
@@ -152,10 +152,10 @@ static int __init intro_init(void) {
 }
 
 static void __exit intro_exit(void) {
-    device_destroy(my_class, MKDEV(major, 0));              // remove the device
-    class_unregister(my_class);                             // unregister the device class
-    class_destroy(my_class);                                // remove the device class
-    unregister_chrdev(major, DEVICE_NAME);                  // unregister the major number
+    device_destroy(my_class, MKDEV(major, 0));              // デバイスを削除する
+    class_unregister(my_class);                             // デバイスクラスの登録を解除する
+    class_destroy(my_class);                                // デバイスクラスを削除する
+    unregister_chrdev(major, DEVICE_NAME);                  // メジャー番号の登録を解除する
     printk(KERN_INFO "[Intro] Closing!\n");
 }
 
@@ -178,14 +178,14 @@ module_exit(intro_exit);
 #include <unistd.h>
 
 int main() {
-    int fd = open("/dev/intro", O_RDWR);    // Open the device with RW access
-    printf("FD: %d\n", fd);                 // print the file descriptor
+    int fd = open("/dev/intro", O_RDWR);    // デバイスを読み書き可能で開く
+    printf("FD: %d\n", fd);                 // ファイルディスクリプタを表示する
 
     char buffer[6];
-    memset(&buffer, 'A', 6);                // fill with As
-    printf("%s\n", buffer);                 // print
-    read(fd, buffer, 6);                    // read from module
-    printf("%s\n", buffer);                 // print again
+    memset(&buffer, 'A', 6);                // A で埋める
+    printf("%s\n", buffer);                 // 表示する
+    read(fd, buffer, 6);                    // モジュールから読み取る
+    printf("%s\n", buffer);                 // もう一度表示する
 }
 ```
 

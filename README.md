@@ -1,4 +1,5 @@
 > これは [ir0nstone/cybersec-notes](https://github.com/ir0nstone/cybersec-notes)(原著者: Andrej Ljubic, ir0nstone)の日本語訳です。原著のライセンス (GPL-3.0) に従い、この翻訳も GPL-3.0 です。訳したのは Pwn(`binexp`)と Rev(`rev`)の部分だけで、ほかの分野(暗号、ブロックチェーン、writeup など)は含みません。
+> 次のページは未翻訳(原文のまま)です: `binexp/browser-exploitation/ctf-2019-oob-v8/the-challenge.md`(本文なしの見出しだけのページを除く)。コードブロック内のコメントは日本語にしてありますが、glibc や Linux などのソースコードを引用した部分は原文のままです。
 
 # サイバーセキュリティノート
 

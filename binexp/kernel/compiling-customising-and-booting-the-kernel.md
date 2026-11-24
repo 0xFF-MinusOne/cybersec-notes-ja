@@ -66,16 +66,16 @@ CONFIG_PRINTK_TIME=y
 
 CONFIG_PCI=y
 
-# We use an initramfs for busybox with elf binaries in it.
+# busybox 用に、ELF バイナリを入れた initramfs を使う。
 CONFIG_BLK_DEV_INITRD=y
 CONFIG_RD_GZIP=y
 CONFIG_BINFMT_ELF=y
 CONFIG_BINFMT_SCRIPT=y
 
-# This is for /dev file system.
+# /dev ファイルシステム用。
 CONFIG_DEVTMPFS=y
 
-# For the power-down button (triggered by qemu's `system_powerdown` command).
+# 電源ボタン用(qemu の `system_powerdown` コマンドで押される)。
 CONFIG_INPUT=y
 CONFIG_INPUT_EVDEV=y
 CONFIG_INPUT_KEYBOARD=y

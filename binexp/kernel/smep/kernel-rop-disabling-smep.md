@@ -19,7 +19,7 @@ qemu-system-x86_64 \
     -nographic \
     -no-reboot \
     -smp cores=2 \
-    -cpu qemu64,+smep \        # add this line
+    -cpu qemu64,+smep \        # この行を追加
     -s
 ```
 
@@ -121,7 +121,7 @@ $ ropper -f vmlinux --search "pop rdi"
 エクスプロイトで変わるのは、オーバーフローの部分だけです。
 
 ```c
-// overflow
+// オーバーフロー
 uint64_t payload[20];
 
 int i = 6;

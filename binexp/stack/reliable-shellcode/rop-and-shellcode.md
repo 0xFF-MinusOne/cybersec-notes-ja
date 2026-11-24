@@ -22,11 +22,11 @@ int main() {
 }
 ```
 
-Super standard binary.
+ごく標準的なバイナリです。
 
 ## Exploitation
 
-Let's get all the basic setup done.
+まず、基本的な準備をすべて済ませます。
 
 ```python
 from pwn import *
@@ -35,7 +35,7 @@ elf = context.binary = ELF('./vuln-32')
 p = process()
 ```
 
-Now we're going to do something interesting - we are going to call `gets` again. Most importantly, we will tell `gets` to write the data it receives to a section of the binary. We need somewhere both readable and writeable, so I choose the GOT. We pass a GOT entry to `gets`, and when it receives the shellcode we send it will **write the shellcode into the GOT**. Now we know _exactly where the shellcode is_. To top it all off, we set the return address of our call to `gets` to where we wrote the shellcode, perfectly executing what we just inputted.
+ここで、おもしろいことをします。`gets` をもう一度呼ぶのです。最も重要な点は、`gets` に、受け取ったデータをバイナリのあるセクションに書き込むよう指示することです。読み取りも書き込みもできる場所が必要なので、GOT を選びます。`gets` に GOT のエントリを渡すと、こちらが送るシェルコードを受け取ったときに、**シェルコードを GOT に書き込みます**。これで、シェルコードが _どこにあるか正確に_ 分かります。仕上げに、`gets` 呼び出しの戻りアドレスを、シェルコードを書き込んだ場所に設定すれば、入力したばかりのものが完璧に実行されます。
 
 ```python
 rop = ROP(elf)
@@ -76,19 +76,18 @@ p.interactive()
 
 ## 64-bit
 
-I wonder what you could do with this.
+これで何ができるか、考えてみてください。
 
 {% file src="../../../.gitbook/assets/reliable\_shellcode-64.zip" caption="Reliable Shellcode - 64-bit" %}
 
 ## ASLR
 
-No need to worry about ASLR! Neither the stack nor libc is used, save for the ROP.
+ASLR の心配は要りません。ROP を除けば、スタックも libc も使わないからです。
 
-The real problem would be if PIE was enabled, as then you couldn't call `gets` as the location of the PLT would be unknown without a leak - same problem with writing to the GOT.
+本当に問題になるのは PIE が有効な場合です。リークがなければ PLT の位置が分からないため `gets` を呼べず、GOT への書き込みも同じ問題を抱えるからです。
 
 ## Potential Problems
 
-Thank to [**clubby789** ](https://clubby789.me/)and [**Faith** ](https://faraz.faith/)from the HackTheBox Discord server, I found out that the GOT often has _Executable_ permissions simply because that's the default permissions when there's no NX. If you have a more recent kernel, such as `5.9.0`, the default is changed and the GOT will not have X permissions.
+HackTheBox の Discord サーバーの [**clubby789** ](https://clubby789.me/)と [**Faith** ](https://faraz.faith/)のおかげで分かったことですが、GOT に _実行(Executable)_ 権限が付いていることはよくあります。NX がない場合、それがデフォルトの権限だからです。`5.9.0` など、より新しいカーネルでは、このデフォルトが変更されており、GOT には X 権限が付きません。
 
-As such, if your exploit is failing, run `uname -r` to grab the kernel version and check if it's `5.9.0`; if it is, you'll have to find another RWX region to place your shellcode \(if it exists!\).
-
+そのため、エクスプロイトが失敗する場合は、`uname -r` を実行してカーネルのバージョンを確認し、`5.9.0` かどうかを調べてください。そうであれば、シェルコードを置くための別の RWX 領域を探す必要があります(存在すればの話ですが)。

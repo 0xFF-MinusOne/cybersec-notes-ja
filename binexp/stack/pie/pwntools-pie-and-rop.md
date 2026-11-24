@@ -1,5 +1,5 @@
 # Pwntools, PIE and ROP
 
-As shown in the [pwntools ELF tutorial](../../../misc/pwntools/elf.md), pwntools has a host of functionality that allows you to really make your exploit dynamic. Simply setting `elf.address` will automatically update all the function and symbols addresses for you, meaning you don't have to worry about using `readelf` or other command line tools, but instead can receive it all dynamically.
+[pwntools の ELF のチュートリアル](../../../misc/pwntools/elf.md)で示したように、pwntools には、エクスプロイトを本当に動的にできる機能が数多くあります。`elf.address` を設定するだけで、すべての関数とシンボルのアドレスが自動的に更新されます。そのため、`readelf` などのコマンドラインツールを使う心配はなく、すべてを動的に受け取れます。
 
-Not to mention that the [ROP capabilities](https://ironstone.gitbook.io/notes/pwntools/rop) are incredibly powerful as well.
+さらに、[ROP の機能](https://ironstone.gitbook.io/notes/pwntools/rop)も非常に強力です。

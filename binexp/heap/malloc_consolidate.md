@@ -1,32 +1,32 @@
 ---
-description: Consolidating fastbins
+description: fastbin を統合する
 ---
 
 # malloc\_consolidate()
 
-[Earlier](bins/operations-of-the-fastbin.md), I said that chunks that went to the unsorted bin would consolidate, but fastbins would not. This is _technically_ not true, but they don't consolidate automatically; in order for them to consolidate, the function [`malloc_consolidate()`](https://elixir.bootlin.com/glibc/glibc-2.29/source/malloc/malloc.c#L4448) has to be called. This function looks complicated, but it essentially just grabs all adjacent fastbin chunks and combines them into larger chunks, placing them in the unsorted bin.
+[先ほど](bins/operations-of-the-fastbin.md)、unsorted bin に入ったチャンクは統合されるが、fastbin は統合されないと説明しました。これは_厳密には_正しくありません。fastbin は自動的には統合されないというだけで、統合させるには関数 [`malloc_consolidate()`](https://elixir.bootlin.com/glibc/glibc-2.29/source/malloc/malloc.c#L4448) を呼び出す必要があります。この関数は複雑に見えますが、本質的には、隣接する fastbin のチャンクをすべて集めてより大きなチャンクに結合し、unsorted bin に置くだけです。
 
-Why do we care? Well, UAFs and the like are very _nice_ to have, but a Read-After-Free on a fastbin chunk can only ever leak you a heap address, as the singly-linked lists only use the `fd` pointer which points to another chunk (on the heap) or is NULL. We want to get a libc leak as well!
+なぜこれが重要なのでしょうか。UAF(use after free)などがあるのは確かに_ありがたい_のですが、fastbin のチャンクに対する Read-After-Free で漏洩できるのはヒープのアドレスだけです。単方向リンクリストが使うのは、(ヒープ上の)別のチャンクを指すか NULL である `fd` ポインタだけだからです。libc のリークも得たいところです。
 
-If we free enough adjacent fastbin chunks at once and trigger a call to `malloc_consolidate()`, they will consolidate to create a chunk that goes to the unsorted bin. The unsorted bin is doubly-linked, and acts accordingly - if it is the only element in the list, both `fd` and `bk` will point to a location in `malloc_state`,  which is contained within libc.
+隣接する fastbin のチャンクを一度に十分な数だけ解放し、`malloc_consolidate()` の呼び出しを引き起こすと、それらが統合されて、unsorted bin に入るチャンクができます。unsorted bin は双方向リンクリストであり、それに応じて動作します。リスト内の唯一の要素であれば、`fd` と `bk` の両方が `malloc_state` 内の場所を指し、これは libc の中にあります。
 
-This means that the more important thing for us to know is _how_ we can trigger a largebin consolidation.
+つまり、私たちにとってより重要なのは、largebin の統合を_どうやって_引き起こせるかを知ることです。
 
-Some of the most important ways include:
+特に重要な方法には次のものがあります。
 
-* Inputting a very long number into `scanf` (around `0x400` characters long)
-  * This works because the code responsible for it manages a `scratch_buffer` and assigns it `0x400` bytes, but uses `malloc` when the data is too big (along with `realloc` if it gets even bigger than the heap chunk, and `free` at the end, so it works to trigger those functions too - great for triggering hooks!).
-* Inputting something along the lines of `%10000c` into a format string vulnerability also triggers a chunk to be created
+* `scanf` に非常に長い数字(約 `0x400` 文字)を入力する
+  * これが有効なのは、その処理を担当するコードが `scratch_buffer` を管理して `0x400` バイトを割り当てている一方で、データが大きすぎる場合は `malloc` を使うためです(データがヒープのチャンクよりさらに大きくなると `realloc` も使い、最後に `free` も使うので、これらの関数を呼び出させる手段にもなります。フックを発動させるのに最適です)。
+* フォーマット文字列の脆弱性に `%10000c` のようなものを入力しても、チャンクが作られます
 
-Both of these work because a **largebin allocation triggers** `malloc_consolidate`.By checking the calls to the function in [`malloc.c`](https://elixir.bootlin.com/glibc/glibc-2.35/source/malloc/malloc.c) (2.35), we can find other triggers.
+どちらも、**largebin の確保が** `malloc_consolidate` **を引き起こす**ために成立します。[`malloc.c`](https://elixir.bootlin.com/glibc/glibc-2.35/source/malloc/malloc.c)(2.35)でこの関数の呼び出し箇所を調べると、ほかのきっかけも見つかります。
 
 {% hint style="info" %}
-It's possible for earlier or later glibc versions to have a greater or lesser number of calls to a specific function, so make sure to check for your version! You may find another way exists.
+glibc のバージョンが前後すると、特定の関数の呼び出し箇所が増えたり減ったりしている可能性があります。使っているバージョンを必ず確認してください。別の方法が見つかるかもしれません。
 {% endhint %}
 
 {% tabs %}
 {% tab title="_int_malloc" %}
-The most common and most important trigger, a call to `malloc()` requesting a chunk of **largebin size** will [trigger a call to `malloc_consolidate()`](https://elixir.bootlin.com/glibc/glibc-2.35/source/malloc/malloc.c#L3965).
+最も一般的で重要なきっかけです。**largebin サイズ**のチャンクを要求する `malloc()` の呼び出しは、[`malloc_consolidate()` の呼び出しを引き起こします](https://elixir.bootlin.com/glibc/glibc-2.35/source/malloc/malloc.c#L3965)。
 
 ```c
 /*
@@ -41,7 +41,7 @@ else
   }
 ```
 
-There is another call to it in the section [`use_top`](https://elixir.bootlin.com/glibc/glibc-2.35/source/malloc/malloc.c#L4353). This section is called when the top chunk has to be used to service the request. The [first `if` condition](https://elixir.bootlin.com/glibc/glibc-2.35/source/malloc/malloc.c#L4375) checks if the top chunk is large enough to service the request:
+[`use_top`](https://elixir.bootlin.com/glibc/glibc-2.35/source/malloc/malloc.c#L4353) の節にも、この関数の呼び出しがもう 1 つあります。この節は、要求に応えるために top chunk を使う必要があるときに実行されます。[最初の `if` 条件](https://elixir.bootlin.com/glibc/glibc-2.35/source/malloc/malloc.c#L4375)は、top chunk が要求に応えられるだけの大きさかどうかを確認します。
 
 ```c
 if ((unsigned long) (size) >= (unsigned long) (nb + MINSIZE))
@@ -60,7 +60,7 @@ if ((unsigned long) (size) >= (unsigned long) (nb + MINSIZE))
 }
 ```
 
-If not, [the next condition](https://elixir.bootlin.com/glibc/glibc-2.35/source/malloc/malloc.c#L4392) checks if there are fastchunks in the arena. If there are, it calls `malloc_consolidate` to attempt to regain space to service the request!
+そうでなければ、[次の条件](https://elixir.bootlin.com/glibc/glibc-2.35/source/malloc/malloc.c#L4392)で、arenaに fastchunk があるかどうかを確認します。あれば、要求に応えるための領域を取り戻そうとして `malloc_consolidate` を呼び出します。
 
 ```c
 else if (atomic_load_relaxed (&av->have_fastchunks))
@@ -74,9 +74,9 @@ else if (atomic_load_relaxed (&av->have_fastchunks))
 }
 ```
 
-So, by filling the heap and requesting another chunk, we can trigger a call to `malloc_consolidate()`.
+つまり、ヒープを埋めてからさらにチャンクを要求すれば、`malloc_consolidate()` の呼び出しを引き起こせます。
 
-(If both conditions fail, `_int_malloc` falls back to esssentially using `mmap` to service the request).
+(両方の条件が失敗した場合、`_int_malloc` は基本的に `mmap` を使って要求に応える形にフォールバックします)。
 {% endtab %}
 
 {% tab title="_int_free" %}
@@ -84,10 +84,10 @@ TODO
 {% endtab %}
 
 {% tab title="malloc_trim" %}
-Calling [`mtrim`](https://elixir.bootlin.com/glibc/glibc-2.35/source/malloc/malloc.c#L5038) will consolidate fastbins (which makes sense, given the name `malloc_trim`). Unlikely to ever be useful, but please do let me know if you find a use for it!
+[`mtrim`](https://elixir.bootlin.com/glibc/glibc-2.35/source/malloc/malloc.c#L5038) を呼び出すと fastbin が統合されます(`malloc_trim` という名前を考えれば納得できます)。役に立つ場面はまずなさそうですが、使い道を見つけたらぜひ教えてください。
 {% endtab %}
 
 {% tab title="mallopt" %}
-When changing malloc options using `mallopt`, [the fastbins are first consolidated](https://elixir.bootlin.com/glibc/glibc-2.35/source/malloc/malloc.c#L5450). This is pretty useless, as `mallopt` is likely called once (if at all) in the program prelude before it does anything.
+`mallopt` で malloc のオプションを変更するとき、[まず fastbin が統合されます](https://elixir.bootlin.com/glibc/glibc-2.35/source/malloc/malloc.c#L5450)。`mallopt` は、呼ばれるとしてもプログラムが何かを始める前の初期化部分で 1 回呼ばれる程度なので、ほとんど役に立ちません。
 {% endtab %}
 {% endtabs %}

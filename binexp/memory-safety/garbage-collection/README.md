@@ -1,5 +1,5 @@
 # Garbage Collection
 
-Garbage Collection is a form of **automatic memory management**, used by (often) higher-level programming languages to remove the need for complicated manual memory management. As a result, manual memory management is **not implemented**, and the developer relies on the garbage collection to handle memory, preventing bugs such as [UAFs](../../../types/heap/use-after-free.md) or [Double-Frees](../../../types/heap/double-free/).
+ガベージコレクション(Garbage Collection)は **自動メモリ管理** の一種で、(多くの場合)高水準のプログラミング言語が、複雑な手動のメモリ管理を不要にするために使います。その結果、手動のメモリ管理は **実装されておらず**、開発者はメモリの扱いをガベージコレクションに任せることで、[UAF](../../../types/heap/use-after-free.md)や[Double-Free](../../../types/heap/double-free/)のようなバグを防げます。
 
-The two main types are [Tracing Garbage Collection](tracing-garbage-collection.md) (which is often just referred to as "Garbage Collection") and [Automatic Reference Counting](automatic-reference-counting.md).
+主な種類は 2 つあります。[トレーシングガベージコレクション(Tracing Garbage Collection)](tracing-garbage-collection.md)(単に「ガベージコレクション」と呼ばれることが多いです)と、[自動参照カウント(Automatic Reference Counting)](automatic-reference-counting.md)です。

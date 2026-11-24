@@ -1,8 +1,8 @@
-# A Basic Kernel Interaction Challenge
+# 基本的なカーネルとのやり取りの問題
 
-## The Module
+## モジュール
 
-We're going to create a really basic authentication module that allows you to read the flag if you input the correct password. Here is the relevant code:
+正しいパスワードを入力するとフラグを読み取れる、ごく基本的な認証モジュールを作ります。関連するコードは次のとおりです。
 
 ```c
 #define PASSWORD    "p4ssw0rd"
@@ -42,19 +42,19 @@ static ssize_t auth_write(struct file *filp, const char __user *buf, size_t coun
 }
 ```
 
-If we attempt to `read()` from the device, it checks the `authenticated` flag to see if it can return us the flag. If not, it sends back `FAIL: Not Authenticated!`.
+デバイスから `read()` しようとすると、`authenticated` フラグを確認して、フラグを返してよいかどうかを判断します。返せない場合は `FAIL: Not Authenticated!` が返されます。
 
-In order to update `authenticated`, we have to `write()` to the kernel module. What we attempt to write it compared to `p4ssw0rd`. If it's not equal, nothing happens. If it is, `authenticated` is updated and the next time we `read()` it'll return the flag!
+`authenticated` を更新するには、カーネルモジュールに `write()` する必要があります。書き込もうとした内容は `p4ssw0rd` と比較されます。等しくなければ何も起こりません。等しければ `authenticated` が更新され、次に `read()` したときにフラグが返されます。
 
-### Interacting
+### やり取りする
 
-Let's first try and interact with the kernel by reading from it.
+まずは、カーネルから読み取ることでやり取りを試してみましょう。
 
 {% hint style="info" %}
-Make sure you `sudo chmod 666 /dev/authentication`!
+必ず `sudo chmod 666 /dev/authentication` を実行してください。
 {% endhint %}
 
-We'll start by opening the device and reading from it.
+まずデバイスを開いて、そこから読み取ります。
 
 ```c
 int fd = open("/dev/authentication", O_RDWR);
@@ -65,16 +65,16 @@ printf("%s\n", buffer);
 ```
 
 {% hint style="info" %}
-Note that in the module source code, the length of `read()` is completely disregarded, so we could make it any number at all! Try switching it to `1` and you'll see.
+モジュールのソースコードでは `read()` の長さがまったく考慮されていないため、どんな数値にしても構わないことに注意してください。`1` に変えて試してみると分かります。
 {% endhint %}
 
-After compiling, we get that we are not authenticated:
+コンパイルして実行すると、認証されていないことが分かります。
 
 <pre class="language-bash"><code class="lang-bash"><strong>$ ./exploit 
 </strong>FAIL: Not Authenticated!
 </code></pre>
 
-Epic! Let's write the correct password to the device then try again. It's really important to send the null byte here! That's because `copy_from_user()` does not automatically add it, so the `strcmp` will fail otherwise!
+すばらしい。では、デバイスに正しいパスワードを書き込んで、もう一度試しましょう。ここでヌルバイトを送ることが非常に重要です。`copy_from_user()` はヌルバイトを自動では追加しないため、送らないと `strcmp` が失敗してしまいます。
 
 ```c
 write(fd, "p4ssw0rd\0", 9);
@@ -83,7 +83,7 @@ read(fd, buffer, 20);
 printf("%s\n", buffer);
 ```
 
-It works!
+うまくいきました。
 
 ```bash
 $ ./exploit
@@ -91,7 +91,7 @@ FAIL: Not Authenticated!
 flag{YES!}
 ```
 
-Amazing! Now for something really important:
+すごい。ここで、本当に重要なことがあります。
 
 ```bash
 $ ./exploit 
@@ -99,9 +99,9 @@ flag{YES!}
 flag{YES!}
 ```
 
-The **state is preserved between connections**! Because the kernel module remains on, you will be authenticated until the module is reloaded (either via `rmmod` then `insmod`, or a system restart).
+**状態は接続をまたいで保持されます**。カーネルモジュールは動き続けているため、モジュールが再読み込みされるまで(`rmmod` してから `insmod` するか、システムを再起動するまで)認証された状態が続きます。
 
-### Final Code
+### 最終的なコード
 
 ```c
 #include <stdio.h>
@@ -125,13 +125,13 @@ int main() {
 ```
 
 {% file src="../../.gitbook/assets/basic_interaction (1).zip" %}
-The Source Code
+ソースコード
 {% endfile %}
 
-## Challenge - IOCTL
+## 課題: IOCTL
 
-So, here's your challenge! Write the **same** kernel module, but using `ioctl` instead. Then write a program to interact with it and perform the same operations. ZIP file including both below, but no cheating! This is really good practise.
+では、ここで課題です。**同じ**カーネルモジュールを、今度は `ioctl` を使って書いてください。そして、それとやり取りして同じ操作を行うプログラムを書きます。両方を含む ZIP ファイルを下に用意してありますが、ずるはしないでください。とてもよい練習になります。
 
 {% file src="../../.gitbook/assets/basic_authentication_ioctl.zip" %}
-Potential Solution
+解答例
 {% endfile %}

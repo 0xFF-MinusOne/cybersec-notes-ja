@@ -1,12 +1,12 @@
 ---
-description: An old technique
+description: 古い手法
 ---
 
 # Kernel ROP - Disabling SMEP
 
 ## Setup
 
-Using the same setuo as [ret2usr](../../../types/kernel/kernel-rop-ret2usr.md), we make one single modification in `run.sh`:
+[ret2usr](../../../types/kernel/kernel-rop-ret2usr.md) と同じ環境を使い、`run.sh` に変更を 1 つだけ加えます。
 
 ```bash
 #!/bin/sh
@@ -23,7 +23,7 @@ qemu-system-x86_64 \
     -s
 ```
 
-Now if we load the VM and run our exploit from last time, we get a kernel panic.
+この状態で VM を読み込み、前回のエクスプロイトを実行すると、カーネルパニックになります。
 
 <details>
 
@@ -76,7 +76,7 @@ Now if we load the VM and run our exploit from last time, we get a kernel panic.
 
 </details>
 
-It's worth noting what it looks like for the future - especially these 3 lines:
+今後のために、どのように見えるかを覚えておく価値があります。特に次の 3 行です。
 
 ```
 [    1.628692] unable to execute userspace code (SMEP?) (uid: 1000)
@@ -86,24 +86,24 @@ It's worth noting what it looks like for the future - especially these 3 lines:
 
 ## Overwriting CR4
 
-So, instead of just returning back to userspace, we will try to overwrite CR4. Luckily, the kernel contains a very useful function for this: [`native_write_cr4(val)`](https://elixir.bootlin.com/linux/v6.1.96/source/arch/x86/kernel/cpu/common.c#L444). This function quite literally overwrites CR4.
+そこで、単にユーザー空間に戻るのではなく、CR4 を上書きしてみます。幸い、カーネルにはそのための非常に便利な関数があります。[`native_write_cr4(val)`](https://elixir.bootlin.com/linux/v6.1.96/source/arch/x86/kernel/cpu/common.c#L444) です。この関数は、文字どおり CR4 を上書きします。
 
-Assuming KASLR is still off, we can get the address of this function via `/proc/kallsyms` (if we update `init` to log us in as `root`):
+KASLR がまだ無効であれば、(`init` を書き換えて root でログインするようにしている場合)`/proc/kallsyms` からこの関数のアドレスを取得できます。
 
 ```
 ~ # cat /proc/kallsyms | grep native_write_cr4
 ffffffff8102b6d0 T native_write_cr4
 ```
 
-Ok, it's located at `0xffffffff8102b6d0`. What do we want to change CR4 to? If we look at the kernel panic above, we see this line:
+この関数は `0xffffffff8102b6d0` にあります。では、CR4 を何に変更したいのでしょうか。上のカーネルパニックを見ると、次の行があります。
 
 ```
 [    1.654685] CR2: 00000000004016b9 CR3: 0000000001292000 CR4: 00000000001006b0
 ```
 
-CR4 is currently `0x00000000001006b0`. If we remove the 20th bit (from the smallest, zero-indexed) we get `0x6b0`.
+CR4 は現在 `0x00000000001006b0` です。(最下位から数えて 0 始まりで)20 ビット目を取り除くと `0x6b0` になります。
 
-The last thing we need to do is find some gadgets. To do this, we have to convert the `bzImage` file into a `vmlinux` ELF file so that we can run `ropper` or `ROPgadget` on it. To do this, we can run [`extract-vmlinux`](https://github.com/torvalds/linux/blob/master/scripts/extract-vmlinux), from the official Linux git repository.
+最後に必要なのは、ガジェットを探すことです。そのためには、`bzImage` ファイルを `vmlinux` の ELF ファイルに変換して、`ropper` や `ROPgadget` を実行できるようにする必要があります。公式の Linux の git リポジトリにある [`extract-vmlinux`](https://github.com/torvalds/linux/blob/master/scripts/extract-vmlinux) を実行すれば変換できます。
 
 ```bash
 $ ./extract-vmlinux bzImage > vmlinux
@@ -118,7 +118,7 @@ $ ropper -f vmlinux --search "pop rdi"
 
 ### Putting it all together
 
-All that changes in the exploit is the overflow:
+エクスプロイトで変わるのは、オーバーフローの部分だけです。
 
 ```c
 // overflow
@@ -134,13 +134,13 @@ payload[i++] = (uint64_t) escalate;
 write(fd, payload, 0);
 ```
 
-We can then compile it and run.
+あとはコンパイルして実行します。
 
 ## Failure
 
-This fails. Why?
+これは失敗します。なぜでしょうか。
 
-If we look at the resulting kernel panic, we meet an old friend:
+結果のカーネルパニックを見ると、おなじみの行が現れます。
 
 ```
 [    1.542923] unable to execute userspace code (SMEP?) (uid: 0)
@@ -148,9 +148,9 @@ If we look at the resulting kernel panic, we meet an old friend:
 [    1.547037] #PF: supervisor instruction fetch in kernel mode
 ```
 
-SMEP is enabled again. How? If we [debug the exploit](../../../types/kernel/debugging-a-kernel-module.md), we definitely hit both the gadget and the call to `native_write_cr4()`. What gives?
+SMEP がまた有効になっています。どうしてでしょうか。[エクスプロイトをデバッグ](../../../types/kernel/debugging-a-kernel-module.md)すると、ガジェットも `native_write_cr4()` の呼び出しも、確かに実行されています。何が起きているのでしょうか。
 
-Well, if we look at [the source](https://elixir.bootlin.com/linux/v6.1.96/source/arch/x86/kernel/cpu/common.c#L444), there's another feature:
+[ソース](https://elixir.bootlin.com/linux/v6.1.96/source/arch/x86/kernel/cpu/common.c#L444)を見ると、別の機能があります。
 
 ```c
 void __no_profile native_write_cr4(unsigned long val)
@@ -173,4 +173,4 @@ set_register:
 }
 ```
 
-Essentially, it will check if the `val` that we input disables any of the bits defined in `cr4_pinned_bits`. This value is [set on boot](https://elixir.bootlin.com/linux/v6.1.96/source/arch/x86/kernel/cpu/common.c#L507), and stops "sensitive CR bits" from being modified. If they are, they are **unset**. Effectively, modifying CR4 doesn't work any longer - and hasn't since [version 5.3-rc1](https://elixir.bootlin.com/linux/v5.3-rc1/source/arch/x86/kernel/cpu/common.c#L431).
+要するに、入力した `val` が、`cr4_pinned_bits` で定義されたビットのどれかを無効にしていないかを確認します。この値は[起動時に設定され](https://elixir.bootlin.com/linux/v6.1.96/source/arch/x86/kernel/cpu/common.c#L507)、「センシティブな CR ビット」が変更されるのを防ぎます。変更されると、それらは **元に戻されます**。事実上、CR4 の変更はもう通用せず、[バージョン 5.3-rc1](https://elixir.bootlin.com/linux/v5.3-rc1/source/arch/x86/kernel/cpu/common.c#L431) 以降ずっとそうなっています。

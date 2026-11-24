@@ -1,11 +1,11 @@
 ---
-description: New and efficient heap management
+description: 新しく効率的なヒープ管理
 ---
 
 # The Tcache
 
-Starting in [glibc 2.27](https://elixir.bootlin.com/glibc/glibc-2.27/source/malloc/malloc.c), a new heap feature called the **tcache** was released. The tcache was designed to be a performance booster, and the operation is very simple: every chunk size (up to size **0x410**) has its own **tcache bin**, which can store up to **7 chunks**. When a chunk of a specific size is allocated, the tcache bin is searched first. When it is freed, the chunk is added to the tcache bin; if it is full, it then goes to the standard fastbin/unsortedbin.
+[glibc 2.27](https://elixir.bootlin.com/glibc/glibc-2.27/source/malloc/malloc.c) から、**tcache** という新しいヒープの機能が導入されました。tcache は性能向上を目的に設計されており、動作はとても単純です。すべてのチャンクサイズ(**0x410** まで)がそれぞれ専用の **tcache bin** を持ち、最大 **7 個のチャンク**を保持できます。特定のサイズのチャンクを確保するときは、まず tcache bin が検索されます。解放されるときは、チャンクは tcache bin に追加され、満杯であれば通常の fastbin / unsortedbin に入ります。
 
-The tcache bin acts like a fastbin - it is a singly-linked list of free chunks of a specific size. The handling of the list, using `fd` pointers, is identical. As you can expect, the attacks on the tcache are also similar to the attacks on fastbins.
+tcache bin は fastbin のように動作し、特定のサイズの解放済みチャンクの単方向リンクリストです。`fd` ポインタを使ったリストの扱いも同じです。想像できるとおり、tcache への攻撃も fastbin への攻撃とよく似ています。
 
-Ironically, years of defenses that were implemented into the fastbins - such as the [double-free protections](../../../types/heap/double-free/double-free-protections.md) - were ignored in the initial implementation of the tcache. This means that using the heap to attack a binary running under glibc 2.27 binary is easier than one running under 2.25!
+皮肉なことに、[double free 対策](../../../types/heap/double-free/double-free-protections.md)をはじめ、fastbin に長年にわたって実装されてきた防御は、tcache の最初の実装では無視されていました。つまり、glibc 2.27 で動くバイナリをヒープで攻撃するほうが、2.25 で動くバイナリを攻撃するよりも簡単なのです。

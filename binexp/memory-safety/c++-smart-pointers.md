@@ -1,11 +1,11 @@
 ---
-description: C++'s foray into memory safety
+description: メモリ安全性に向けた C++ の取り組み
 ---
 
 # C++ Smart Pointers
 
-Smart pointers have existed almost as long as C++, but have recently gained attention as worries about memory safety becomes more commonplace. The idea of a smart pointer is that they are a wrapper around a raw pointer, which will automatically be freed once it stops being used (like a standard pointer in Rust).
+スマートポインタ(smart pointer)は C++ とほぼ同じくらい昔から存在していましたが、メモリ安全性への懸念が一般的になるにつれて、最近注目を集めています。スマートポインタとは、生のポインタ(raw pointer)を包むラッパーで、使われなくなると自動的に解放されるというものです(Rust の標準的なポインタに似ています)。
 
-`unique_ptr` allows for exactly one owner of the underlying pointer, and while ownership can be transferred to other `unique_ptr` objects, the pointer cannot be copied or shared. Once a `unique_ptr` goes out of scope, the underlying pointer (if it still exists) is freed to clean up. If ownership was transferred to another `unique_ptr`, then there is no underlying pointer, and nothing happens. The original raw pointer is not freed until the new owning `unique_ptr` is out of scope.
+`unique_ptr` は、基になるポインタの所有者をちょうど 1 つに限ります。所有権はほかの `unique_ptr` オブジェクトに移せますが、ポインタをコピーしたり共有したりはできません。`unique_ptr` がスコープを抜けると、基になるポインタが(まだ存在していれば)解放されて後片付けされます。所有権が別の `unique_ptr` に移されていれば、基になるポインタはもう存在せず、何も起こりません。元の生ポインタは、新しい所有者の `unique_ptr` がスコープを抜けるまで解放されません。
 
-`shared_ptr` is different and allows for multiple owners. The raw pointer is not deleted until **all** `shared_ptr` owners are out of scope (or otherwise given up ownership). To do this, a `shared_ptr` also has a **shared** [**reference count**](garbage-collection/automatic-reference-counting.md) which is decremented every time a `shared_ptr` goes out of scope, is reset or is overwritten. Once it drops to zero, the raw pointer is freed.
+`shared_ptr` は異なり、複数の所有者を持てます。生ポインタは、**すべて** の `shared_ptr` の所有者がスコープを抜ける(または所有権を手放す)まで削除されません。そのために、`shared_ptr` は **共有された** [**参照カウント(reference count)**](garbage-collection/automatic-reference-counting.md)も持っていて、`shared_ptr` がスコープを抜けるとき、リセットされるとき、上書きされるときに、そのたびに減らされます。ゼロになると、生ポインタが解放されます。

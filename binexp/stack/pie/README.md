@@ -1,28 +1,27 @@
 ---
-description: Position Independent Code
+description: 位置独立コード
 ---
 
 # PIE
 
 ## Overview
 
-PIE stands for **Position Independent Executable**, which means that every time you run the file it gets **loaded into a different memory address**. This means you cannot hardcode values such as function addresses and gadget locations without finding out where they are.
+PIE は **Position Independent Executable**(位置独立実行形式)の略で、ファイルを実行するたびに **異なるメモリアドレスにロードされる** ことを意味します。つまり、関数のアドレスやガジェットの位置といった値は、場所を調べない限りハードコードできません。
 
 ## Analysis
 
-Luckily, this does _not_ mean it's impossible to exploit. PIE executables are based around **relative** rather than **absolute** addresses, meaning that while the locations in memory are fairly random the offsets between different **parts of the binary** remain **constant**. For example, if you know that the function `main` is located `0x128` bytes in memory after the base address of the binary, and you somehow find the location of `main`, you can simply subtract `0x128` from this to get the base address and from the addresses of everything else.
+幸い、これはエクスプロイトが不可能という意味では _ありません_。PIE 実行ファイルは、**絶対** アドレスではなく **相対** アドレスに基づいています。メモリ上の位置はかなりランダムですが、**バイナリの各部分** 同士のオフセットは **一定** のままです。たとえば、関数 `main` がバイナリのベースアドレスから `0x128` バイト先にあると分かっていて、何らかの方法で `main` の位置を突き止められたなら、その値から `0x128` を引くだけでベースアドレスが得られ、ほかのすべてのアドレスも求められます。
 
 ## Exploitation
 
-So, all we need to do is find a _single_ address and PIE is bypassed. Where could we leak this address from?
+つまり、アドレスを _1つ_ 見つけるだけで PIE は突破できます。このアドレスはどこからリークできるでしょうか。
 
-The stack of course!
+もちろん、スタックです。
 
-We know that the **return pointer** is located on the stack - and much like a canary, we can use format string \(or other ways\) to read the value off the stack. The value will always be a static offset away from the binary base, enabling us to completely bypass PIE!
+**リターンポインタ** はスタック上にあることが分かっています。カナリアのときと同様に、フォーマット文字列(またはほかの方法)を使って、スタックからその値を読み取れます。この値は常にバイナリのベースから固定のオフセットだけ離れているため、PIE を完全にバイパスできます。
 
 ## Double-Checking
 
-Due to the way PIE randomisation works, the base address of a PIE executable will **always** end in the hexadecimal characters `000`. This is because **pages** are the things being randomised in memory, which have a standard size of `0x1000`. Operating Systems keep track of page tables which point to each section of memory and define the permissions for each section, similar to segmentation.
+PIE のランダム化の仕組みにより、PIE 実行ファイルのベースアドレスは **必ず** 16進数で `000` で終わります。これは、メモリ上でランダム化される対象が **ページ** であり、その標準サイズが `0x1000` だからです。オペレーティングシステムは、メモリの各セクションを指してそれぞれの権限を定義するページテーブルを管理しており、これはセグメンテーションに似ています。
 
-Checking the base address ends in `000` should _probably_ be the first thing you do if your exploit is not working as you expected.
-
+エクスプロイトが思いどおりに動かないときは、ベースアドレスが `000` で終わっているかをまず確認するのが、おそらくよいでしょう。

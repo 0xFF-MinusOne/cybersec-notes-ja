@@ -4,19 +4,19 @@ description: Lack of space for ROP
 
 # Stack Pivoting
 
-## Overview
+## 概要
 
-**Stack Pivoting** is a technique we use when we lack space on the stack - for example, we have 16 bytes past RIP. In this scenario, we're not able to complete a full ROP chain.
+**Stack Pivoting** は、スタック上の空きが足りないときに使う手法です。たとえば、RIP の後ろに 16 バイトしかないような場合で、このとき完全な ROP チェーンは作れません。
 
-During Stack Pivoting, we take control of the **RSP** register and "fake" the location of the stack. There are a few ways to do this.
+Stack Pivoting では、**RSP** レジスタを制御して、スタックの場所を「偽装」します。方法はいくつかあります。
 
-### pop rsp gadget
+### pop rsp ガジェット
 
-Possibly the simplest, but also the least likely to exist. If there is one of these, you're quite lucky.
+おそらく最も単純ですが、存在する可能性が最も低い方法です。もしあれば、かなり運が良いです。
 
 ### xchg &lt;reg&gt;, rsp
 
-If you can find a `pop <reg>` gadget, you can then use this `xchg` gadget to swap the values with the ones in RSP. Requires about 16 bytes of stack space after the saved return pointer:
+`pop <reg>` ガジェットが見つかれば、この `xchg` ガジェットを使って、その値と RSP の値を入れ替えられます。保存されたリターンポインタの後ろに、16 バイトほどのスタック領域が必要です。
 
 ```text
 pop <reg>                <=== return pointer
@@ -26,16 +26,16 @@ xchg <rag>, rsp
 
 ### leave; ret
 
-This is a _very_ interesting way of stack pivoting, and it only requires 8 bytes.
+これは_非常に_面白いスタックピボットの方法で、必要なのは 8 バイトだけです。
 
-Every function \(except `main`\) is ended with a `leave; ret` gadget. `leave` is equivalent to
+すべての関数(`main` を除く)は、`leave; ret` ガジェットで終わります。`leave` は次と等価です。
 
 ```text
 mov rsp, rbp
 pop rbp
 ```
 
-Note that the function ending therefore looks like
+つまり、関数の終わりは次のようになります。
 
 ```text
 mov rsp, rbp
@@ -43,7 +43,7 @@ pop rbp
 pop rip
 ```
 
-That means that when we overwrite RIP the 8 bytes before that overwrite RBP \(you may have noticed this before\). So, cool - we can overwrite `rbp` using `leave`. How does that help us?
+したがって、RIP を上書きするとき、その直前の 8 バイトが RBP を上書きします(以前に気づいたかもしれません)。つまり、`leave` を使って `rbp` を上書きできます。これがどう役に立つのでしょうか。
 
-Well if we look at `leave` again, we noticed the value in RBP gets moved to RSP! So if we call overwrite RBP then overwrite RIP with the address of `leave; ret` again, the value in RBP gets moved to RSP. And, even better, we don't need any more stack space than just overwriting RIP, making it _very_ compressed.
+もう一度 `leave` を見ると、RBP の値が RSP に移されることに気づきます。だから、RBP を上書きし、さらに RIP を `leave; ret` のアドレスで上書きすると、RBP の値が RSP に移されます。しかも、RIP を上書きする以上のスタック領域は必要ありません。そのため、_非常に_コンパクトに済みます。
 

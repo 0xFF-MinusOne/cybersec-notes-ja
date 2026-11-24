@@ -1,20 +1,20 @@
 ---
-description: The defence against shellcode
+description: シェルコードに対する防御
 ---
 
 # No eXecute
 
-As you can expect, programmers were hardly pleased that people could inject their own instructions into the program. The NX bit, which stands for No eXecute, defines areas of memory as either **instructions** or **data**. This means that your input will be stored as **data**, and any attempt to run it as instructions will crash the program, effectively neutralising shellcode.
+想像がつくとおり、プログラマたちは、他人が自分のプログラムに勝手に命令を注入できることをまったく歓迎しませんでした。NX ビット(No eXecute の略)は、メモリ領域を **命令** か **データ** のどちらかとして定義します。これにより、入力は **データ** として保存され、それを命令として実行しようとするとプログラムがクラッシュするため、シェルコードは事実上無力化されます。
 
-To get around NX, exploit developers have to leverage a technique called **ROP**, Return-Oriented Programming.
+NX を回避するために、エクスプロイト開発者は **ROP**(Return-Oriented Programming)という手法を使う必要があります。
 
 {% hint style="info" %}
-The Windows version of NX is DEP, which stands for **D**ata **E**xecution **P**revention
+Windows における NX に相当するものは DEP で、**D**ata **E**xecution **P**revention の略です
 {% endhint %}
 
 #### Checking for NX
 
-You can either use pwntools' `checksec` or `rabin2`.
+pwntools の `checksec` か `rabin2` のどちらかを使えます。
 
 ```text
 $ checksec vuln
@@ -33,4 +33,3 @@ $ rabin2 -I vuln
 nx       false
 [...]
 ```
-

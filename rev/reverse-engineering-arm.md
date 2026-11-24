@@ -1,61 +1,61 @@
 ---
 description: >-
-  Just a ragged collection of notes before I do anything proper - do not take
-  this as gospel! I am doing ARM reversing on my M1 MacBook for fun...
+  本格的に取り組む前の、まとまりのないメモ書きです。鵜呑みにしないでください。
+  趣味で M1 MacBook 上の ARM リバースエンジニアリングをしています...
 ---
 
 # Reverse Engineering ARM
 
-ARM works a bit differently to intel x86 architecture in the way it uses registers and how instructions are formed.
+ARM は、レジスタの使い方や命令の構成が Intel の x86 アーキテクチャとは少し異なります。
 
-## Registers
+## レジスタ
 
-* `SP` - Stack Pointer (same as ESP - points to top of the stack)
-* `x29` - the Frame Pointer, `FP`, points to the base of the current functions stack frame (similar to EBP)
-* `x30` - the Link Register, `LR`, which stores the return address of a function (the return pointer)
-* `PC` - the Program Counter (aka Instruction Pointer) pointing to the next&#x20;
+* `SP` - スタックポインタ(Stack Pointer)。ESP と同じで、スタックの先頭を指します
+* `x29` - フレームポインタ(Frame Pointer)`FP` で、現在の関数のスタックフレーム(stack frame)の底を指します(EBP に相当します)
+* `x30` - リンクレジスタ(Link Register)`LR` で、関数のリターンアドレス(return address)を格納します
+* `PC` - プログラムカウンタ(Program Counter、命令ポインタ(Instruction Pointer)とも呼ばれます)で、次の命令を指します&#x20;
 
-The calling convention in ARM works similarly to x86:
+ARM の呼び出し規約(calling convention)は x86 と似た動きをします。
 
 ```
-// drop down SP
+// SP を下げる
 sub sp, sp, 0x20
 
-// Save FP and LR to the stack
+// FP と LR をスタックに保存する
 stp x29, x30, [var_10h]
 
-// Set up a new stack frame by updating x29 to SP+0x10
+// x29 を SP+0x10 に更新して、新しいスタックフレームを作る
 add x29, sp, 0x10
 
-// ... function execution ...
+// ... 関数の処理 ...
 
-// Restore FP and LR
+// FP と LR を復元する
 ldp X29, X30, [SP], [var_10h]
 
-// Return
+// 戻る
 ret
 ```
 
-Even though it does roughly the same stuff, there are a few differences between x86 and ARM64.
+おおよそ同じことをしていますが、x86 と ARM64 にはいくつか違いがあります。
 
-Firstly, a lot of instructions take 3 parameters now:
+まず、多くの命令が 3 つのオペランドを取ります。
 
 ```
 sub sp, sp, 0x20
 ```
 
-The first parameter here (as well as for other functions such as `add`) is the register to store the result in. In x86, we assume that the first register that we are adding also stores the result, but ARM makes it explicit.
+ここでは(`add` などの他の命令も同様に)第 1 オペランドが結果を格納するレジスタです。x86 では加算の対象となる最初のレジスタに結果も入るものとして扱いますが、ARM ではそれを明示します。
 
-The `stp` instruction has no direct x86 equivalent (as far as I am aware!). Essentially, the first two parameters provide registers and the third parameter tells it where in. memory to save the values. For example, the following instruction stores `x29` and `x30` to memory location `var_10h`:
+`stp` 命令には、x86 に直接対応する命令はありません(私の知る限りでは)。基本的に、最初の 2 つのオペランドがレジスタで、3 つ目のオペランドが値を保存するメモリ上の場所を指定します。たとえば次の命令は、`x29` と `x30` をメモリ上の `var_10h` に保存します。
 
 ```
 stp x29, x30, [var_10h]
 ```
 
 {% hint style="warning" %}
-I'm not really sure what `var_10h` refers to - Cutter says\
+`var_10h` が何を指しているのかはよく分かっていません。Cutter は\
 `var_10h @ stack - 0x10`\
-but I don't know exactly what it uses as a reference point - todo moment...
+と表示しますが、何を基準点にしているのかは正確には分かりません。要確認です...
 {% endhint %}
 
-Finally, the `ret` instruction is executed. `ret` transfers the value in `x30` (`LR`) to `PC` to return execution to the next instruction after the call to the function.
+最後に `ret` 命令が実行されます。`ret` は `x30`(`LR`)の値を `PC` に転送し、関数呼び出しの次の命令へ実行を戻します。

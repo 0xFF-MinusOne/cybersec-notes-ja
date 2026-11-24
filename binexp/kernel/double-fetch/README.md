@@ -1,16 +1,16 @@
 ---
-description: The most simple of vulnerabilities
+description: 最も単純な脆弱性
 ---
 
 # Double-Fetch
 
-A **double-fetch** vulnerability is when data is accessed from userspace multiple times. Because userspace programs will commonly pass parameters in to the kernel as **pointers**, the data can be modified at any time. If it is modified at the exact right time, an attacker could compromise the execution of the kernel.
+**ダブルフェッチ(double-fetch)** 脆弱性とは、ユーザー空間(userspace)のデータに複数回アクセスしてしまう脆弱性です。ユーザー空間のプログラムは、パラメータを **ポインタ** としてカーネルに渡すのが一般的なので、そのデータはいつでも書き換えられる可能性があります。ちょうど良いタイミングで書き換えられると、攻撃者がカーネルの実行を乗っ取れるかもしれません。
 
-## A Vulnerable Kernel Module
+## 脆弱なカーネルモジュール
 
-Let's start with a convoluted example, where all we want to do is change the `id` that the module stores. We are not allowed to set it to `0`, as that is the ID of `root`, but all other values are allowed.
+まずは、あえて回りくどい例から始めましょう。ここでやりたいのは、モジュールが保持している `id` を変更することだけです。`root` の ID である `0` には設定できませんが、それ以外の値はすべて許可されています。
 
-The code below will be the contents of the `read()` function of a kernel. I've removed [the boilerplate code mentioned previously](../writing-a-char-module/a-communicatable-char-driver.md), but here are the relevant parts:
+以下のコードは、カーネルモジュールの `read()` 関数の中身にあたります。[前に説明した定型コード](../writing-a-char-module/a-communicatable-char-driver.md)は省き、関係する部分だけを載せています。
 
 ```c
 #define PASSWORD    "p4ssw0rd"
@@ -46,17 +46,17 @@ static ssize_t df_write(struct file *filp, const char __user *buf, size_t count,
 }
 ```
 
-The program will:
+このプログラムは次のことを行います。
 
-* Check if the ID we are attempting to switch to is `0`
-  * If it is, it doesn't allow us, as we attempted to log in as root
-* Sleep for 1 second (this is just to illustrate the example better, we will remove it later)
-* Compare the password to `p4ssw0rd`
-  * If it is, it will set the `id` variable to the `id` in the `creds` structure
+* 切り替え先の ID が `0` かどうかを確認する
+  * `0` なら、root としてのログインを試みたことになるので許可しない
+* 1 秒間スリープする(例を分かりやすくするためだけのもので、後で取り除きます)
+* パスワードを `p4ssw0rd` と比較する
+  * 一致すれば、`id` 変数に `creds` 構造体の `id` を設定する
 
-### Simple Communication
+### 単純なやり取り
 
-Let's say we want to communicate with the module, and we set up a simple C program to do so:
+モジュールとやり取りしたいので、簡単な C プログラムを用意します。
 
 ```c
 #include <fcntl.h>
@@ -85,13 +85,13 @@ int main() {
 }
 ```
 
-We compile this statically (as there are no shared libraries on our VM):
+VM には共有ライブラリがないため、静的リンクでコンパイルします。
 
 ```bash
 gcc -static -o exploit exploit.c
 ```
 
-As expected, the `id` variable gets set to `900` - we can check this in `dmesg`:
+期待どおり `id` 変数は `900` に設定されます。`dmesg` で確認できます。
 
 ```
 $ dmesg
@@ -99,23 +99,23 @@ $ dmesg
 [    3.104165] [Double-Fetch] Password correct! ID set to 900
 ```
 
-That all works fine.
+ここまでは問題なく動きます。
 
-## Exploiting a Double-Fetch and Switching to ID 0
+## Double-Fetch の悪用と ID 0 への切り替え
 
 {% file src="../../../.gitbook/assets/double_fetch_sleep.zip" %}
 
-The flaw here is that `creds->id` is **dereferenced twice**. What does this mean? The kernel module is passed a **reference** to a `Credentials` struct:
+欠陥は、`creds->id` が **2 回デリファレンス(dereference)される** ことです。どういうことでしょうか。カーネルモジュールには `Credentials` 構造体への **参照** が渡されます。
 
 ```c
 Credentials *creds = (Credentials *)buf;
 ```
 
-This is a **pointer**, and that is perhaps the _most_ important thing to remember. When we interact with the module, we give it _a specific memory address_. This memory address holds the `Credentials` struct that we define and pass to the module. The kernel does **not** have a copy - it relies on the user's copy, and goes to userspace memory to use it.
+これは **ポインタ** であり、ここが _最も_ 重要なポイントです。モジュールとやり取りするとき、私たちは _特定のメモリアドレス_ を渡しています。そのアドレスには、私たちが定義してモジュールに渡した `Credentials` 構造体が入っています。カーネルはコピーを持って **いません**。ユーザーが持つコピーを頼りに、ユーザー空間のメモリまで読みに行っているのです。
 
-Because this struct is controlled by the user, they have the power to _change it whenever they like_.
+この構造体はユーザーが制御できるので、ユーザーは _好きなタイミングで書き換えられます_。
 
-The kernel module uses the `id` field of the struct on two separate occasions. Firstly, to check that the ID we wish to swap to is valid (not `0`):
+カーネルモジュールは、構造体の `id` フィールドを 2 回使っています。1 回目は、切り替え先の ID が有効(`0` ではない)かどうかの確認です。
 
 ```c
 if (creds->id == 0) {
@@ -124,7 +124,7 @@ if (creds->id == 0) {
 }
 ```
 
-And once more, to set the `id` variable:
+2 回目は、`id` 変数への設定です。
 
 ```c
 if (!strcmp(creds->password, PASSWORD)) {
@@ -134,29 +134,29 @@ if (!strcmp(creds->password, PASSWORD)) {
 }
 ```
 
-Again, this might seem fine - but it's not. _What is stopping it from changing inbetween these two uses_? The answer is simple: nothing. That is what differentiates userspace exploitation from kernel space.
+これも問題なさそうに見えますが、そうではありません。_この 2 回の使用の間に値が変わるのを、何が止めてくれるのでしょうか_。答えは簡単で、何もありません。これが、ユーザー空間の攻略とカーネル空間の攻略の違いです。
 
-### A Proof-of-Concept: Switching to ID 0
+### 概念実証: ID 0 への切り替え
 
-Inbetween the two dereferences `creds->id`, there is a timeframe. Here, we have artificially extended it (by sleeping for one second). We have a **race codition** - the aim is to switch `id` in that timeframe. If we do this successfully, we will pass the initial check (as the ID will start off as `900`), but by the time it is copied to `id`, it will have become `0` and we have bypassed the security check.
+`creds->id` の 2 つのデリファレンスの間には、時間の幅があります。ここでは 1 秒間スリープすることで、その幅を人為的に広げています。これは **レースコンディション(race condition)** です。狙いは、その時間幅の中で `id` を切り替えることです。うまくいけば、最初のチェックは通過し(ID はこの時点では `900` です)、`id` にコピーされるときには `0` になっていて、セキュリティチェックを回避できます。
 
 
 
-Here's the plan, visually, if it helps:
+流れを図にするとこうなります。
 
 
 
 <figure><img src="../../../.gitbook/assets/double_fetch_id (1).svg" alt=""><figcaption></figcaption></figure>
 
-In the waiting period, we swap out the `id`.
+待機している間に `id` を入れ替えます。
 
 {% hint style="info" %}
-If you are trying to compile your own kernel, you need `CONFIG_SMP` enabled, because we need to modify it in a different thread! Additionally, you need QEMU to have the flag `-smp 2` (or more) to enable 2 cores, though it may default to having multiple even without the flag. This example may work without SMP, but that's because of the sleep - when we most onto part 2, with no sleep, we require multiple cores.
+自分でカーネルをコンパイルする場合は、別のスレッドで書き換える必要があるため、`CONFIG_SMP` を有効にしなければなりません。さらに、2 コアを有効にするため、QEMU にフラグ `-smp 2`(またはそれ以上)を付ける必要があります。ただし、フラグなしでも既定で複数コアになることがあります。この例はスリープがあるおかげで SMP なしでも動くかもしれませんが、スリープなしの第 2 部に進むと、複数コアが必要になります。
 
-The C program will hang on `write` until the kernel module returns, so we can't use the main thread.
+C プログラムはカーネルモジュールが戻るまで `write` で止まってしまうので、メインスレッドは使えません。
 {% endhint %}
 
-With that in mind, the "exploit" is fairly self-explanatory - we start another thread, wait 0.3 seconds, and change `id`!
+以上を踏まえると、「エクスプロイト」はかなり単純です。別のスレッドを起動し、0.3 秒待ってから `id` を書き換えます。
 
 {% code overflow="wrap" lineNumbers="true" %}
 ```c
@@ -223,25 +223,25 @@ void *switcher(void *arg) {
 ```
 {% endcode %}
 
-We have to compile it statically, as the VM has no shared libraries.
+VM には共有ライブラリがないので、静的リンクでコンパイルする必要があります。
 
 ```bash
 $ gcc -static -o exploit -pthread exploit.c
 ```
 
-Now we have to somehow get it into the file system. In order to do that, we need to first extract the `.cpio` archive (you may want to do this in another folder):
+次に、これをファイルシステムに入れる必要があります。そのために、まず `.cpio` アーカイブを展開します(別のフォルダで行うとよいでしょう)。
 
 ```bash
 $ cpio -i -F initramfs.cpio
 ```
 
-Now copy `exploit` there and make sure it's marked executable. You can then compress the filesystem again:
+`exploit` をそこにコピーし、実行可能にしておきます。その後、ファイルシステムを再び圧縮します。
 
 ```bash
 $ find . -not -name *.cpio | cpio -o -H newc > initramfs.cpio
 ```
 
-Use the newly-created `initramfs.cpio` to lauch the VM with `run.sh`. Executing `exploit`, it is successful!
+新しく作った `initramfs.cpio` を使い、`run.sh` で VM を起動します。`exploit` を実行すると、成功します。
 
 ```bash
 ~ # ./exploit 
@@ -250,5 +250,5 @@ New ID: 0
 ```
 
 {% hint style="info" %}
-Note that the VM loaded you in as `root` by default. This is for debugging purposes, as it allows you to use utilities such as `dmesg` to read the kernel module output and check for errors, as well as a host of other things we will talk about. When testing exploits, it's always helpful to fix the `init` script to load you in as root! Just don't forget to test it as another user in the end.
+VM は既定で `root` としてログインした状態になっていることに注意してください。これはデバッグ用で、`dmesg` などのユーティリティでカーネルモジュールの出力を読んだりエラーを確認したり、そのほかにも後で説明するさまざまなことができるようになります。エクスプロイトをテストするときは、`init` スクリプトを書き換えて root でログインするようにしておくと便利です。ただし、最後に別のユーザーでもテストするのを忘れないでください。
 {% endhint %}

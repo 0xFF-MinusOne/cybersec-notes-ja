@@ -1,15 +1,15 @@
-# Operations of the Fastbin
+# fastbin の動作
 
-Fastbins are a singly-linked list of chunks. The point of these is that very small chunks are reused quickly and efficiently. To aid this, chunks of fastbin size **do not consolidate** (they are not absorbed into surrounding free chunks once freed).
+fastbin はチャンクの単方向リンクリストです。目的は、非常に小さいチャンクを素早く効率的に再利用することです。そのために、fastbin サイズのチャンクは**統合されません**(解放されても、周囲の解放済みチャンクに吸収されません)。
 
-A fastbin is a LIFO (Last-In-First-Out) structure, which means the last chunk to be added to the bin is the first chunk to come out of it. Glibc **only** keeps track of the HEAD, which points to the first chunk in the list (and is set to `0` if the fastbin is empty). Every chunk in the fastbin has an `fd` pointer, which points to the next chunk in the bin (or is `0` if it is the last chunk).
+fastbin は LIFO(Last-In-First-Out、後入れ先出し)の構造で、最後に bin に追加されたチャンクが最初に取り出されます。glibc が管理しているのは、リストの先頭のチャンクを指す HEAD **だけ**です(fastbin が空なら `0` になります)。fastbin 内のすべてのチャンクは `fd` ポインタを持ち、bin 内の次のチャンクを指します(最後のチャンクなら `0` です)。
 
-When a new chunk is freed, it's added at the **front** of the list (making it the head):
+新しくチャンクを解放すると、リストの**先頭**に追加されます(そのチャンクが head になります)。
 
-* The `fd` of the newly-freed chunk is overwritten to point at the old head of the list
-* HEAD is updated to point to this new chunk, setting the new chunk as the head of the list
+* 解放されたチャンクの `fd` が、それまでの head を指すように上書きされます
+* HEAD がこの新しいチャンクを指すように更新され、新しいチャンクがリストの head になります
 
-Let's have a visual demonstration (it will help)! Try out the following C program:
+実際に見てみましょう(理解の助けになります)。次の C プログラムを試してください。
 
 ```c
 #include <stdio.h>
@@ -38,7 +38,7 @@ int main() {
 }
 ```
 
-We get:
+結果は次のとおりです。
 
 ```
 a: 0x2292010
@@ -51,37 +51,37 @@ e: 0x2292030
 f: 0x2292010
 ```
 
-As you can see, the chunk `a` gets reassigned to chunk `f`, `b` to `e` and `c` to `d`. So, if we `free()` a chunk, there's a good chance our next `malloc()` - if it's of the same size - will use the same chunk.
+見てのとおり、チャンク `a` はチャンク `f` に、`b` は `e` に、`c` は `d` に再割り当てされています。つまり、チャンクを `free()` すると、次の `malloc()` が同じサイズであれば、同じチャンクが使われる可能性が高いのです。
 
 <figure><img src="../../../.gitbook/assets/fastbin_head.svg" alt=""><figcaption></figcaption></figure>
 
-It can be really confusing as to why we add and remove chunks from the _start_ of the list (why not the end?), but it's really just the **most efficient way** to add an element. Let's say we have this fastbin setup:
+チャンクをリストの末尾ではなく、なぜ_先頭_に追加したり、先頭から取り出したりするのかは非常に分かりにくいかもしれません。しかし、これは単に要素を追加する**最も効率的な方法**だからです。たとえば、次のような fastbin があるとします。
 
 ```
 HEAD --> a -> b
 ```
 
-In this case HEAD points to `a`, and `a` points onwards to `b` as the next chunk in the bin (because the `fd` field of `a` points to `b`). Now let's say we free another chunk `c`. If we want to add it to the end of the list like so:
+この場合、HEAD は `a` を指し、`a` は bin 内の次のチャンクとして `b` を指しています(`a` の `fd` フィールドが `b` を指しているためです)。ここで別のチャンク `c` を解放したとします。これをリストの末尾に追加して次のようにしたいとします。
 
 ```
 HEAD --> a -> b -> c
 ```
 
-We would have to update the `fd` pointer of `b` to point at `c`. But remember that glibc **only keeps track of the first chunk in the list** - it only has the HEAD stored. It has no information about the end of this list, which could be many chunks long. This means that to add `c` in at the end, it would first have to start at the head and _traverse through the entire list_ until it got to the last chunk, **then** overwrite the `fd` field of the last chunk to point at `c` and make `c` the last chunk.
+そのためには `b` の `fd` ポインタが `c` を指すように更新する必要があります。しかし、glibc は**リストの先頭のチャンクしか管理していません**。保持しているのは HEAD だけで、何チャンクも続くかもしれないリストの終端に関する情報は持っていません。つまり、`c` を末尾に追加するには、まず head から始めて_リスト全体をたどり_、最後のチャンクに到達してから、**その上で**最後のチャンクの `fd` フィールドを `c` を指すように上書きして `c` を最後のチャンクにすることになります。
 
-Meanwhile, if it adds at the HEAD:
+一方、HEAD に追加する場合は次のようになります。
 
 ```
 HEAD --> c -> a -> b
 ```
 
-All we need to do is:
+必要な作業は次のとおりです。
 
-* Set the `fd` of `c` to point at `a`
-  * This is easy, as `a` was the old head, so glibc had a pointer to it stored already
-* HEAD is then updated to `c`, making it the head of the list
-  * This is also easy, as the pointer to `c` is freely available
+* `c` の `fd` が `a` を指すように設定する
+  * `a` はそれまでの head だったので、glibc はすでにそのポインタを保持しており、簡単です
+* HEAD を `c` に更新して、`c` をリストの head にする
+  * `c` へのポインタは手元にあるので、これも簡単です
 
-This has **much** less overhead!
+このほうがオーバーヘッドが**はるかに**小さくなります。
 
-For reallocating the chunk, the same principle applies - it's much easier to update HEAD to point to `a` by reading the `fd` of `c` than it is to traverse the entire list until it gets to the end.
+チャンクを再割り当てするときも同じ原理が当てはまります。リストの末尾に到達するまでリスト全体をたどるより、`c` の `fd` を読み取って HEAD が `a` を指すように更新するほうがずっと簡単です。

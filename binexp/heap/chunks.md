@@ -1,34 +1,34 @@
-# Chunks
+# チャンク
 
-Internally, every chunk - whether allocated or free - is stored in a [`malloc_chunk` ](https://elixir.bootlin.com/glibc/glibc-2.39/source/malloc/malloc.c#L1136)structure. The difference is how the memory space is used.
+内部的には、確保済みか解放済みかを問わず、すべてのチャンクは [`malloc_chunk` ](https://elixir.bootlin.com/glibc/glibc-2.39/source/malloc/malloc.c#L1136)構造体として保存されています。違いは、メモリ領域の使い方にあります。
 
-## Allocated Chunks
+## 確保済みチャンク
 
-When space is allocated from the **heap** using a function such as `malloc()`, a pointer to a heap address is returned. Every chunk has additional **metadata** that it has to store in both its used and free states.
+`malloc()` などの関数を使って**ヒープ**から領域を確保すると、ヒープ上のアドレスへのポインタが返されます。すべてのチャンクは、使用中でも解放済みでも保持しなければならない追加の**メタデータ**を持っています。
 
 ![](<../../.gitbook/assets/image (9).png>)
 
-The chunk has two sections - the **metadata** of the chunk (information _about_ the chunk) and the **user data**, where the data is actually stored.
+チャンクには 2 つの部分があります。チャンクの**メタデータ**(チャンク_についての_情報)と、実際にデータが保存される**ユーザーデータ**です。
 
-The `size` field is the overall size of the chunk, **including metadata**. It must be a multiple of `8`, meaning the last 3 bits of the `size` are `0`. This allows the flags `A`, `M` and `P` to take up that space, with `A` being the 3rd-last bit of `size`, `M` the 2nd-last and `P` the last.
+`size` フィールドは、**メタデータを含む**チャンク全体のサイズです。これは `8` の倍数でなければならず、つまり `size` の下位 3 ビットは `0` です。この空きビットを使って、フラグ `A`、`M`、`P` が格納されます。`A` が下位から 3 番目のビット、`M` が 2 番目、`P` が最下位ビットです。
 
-The flags have special uses:
+各フラグには特別な用途があります。
 
-* `P` is the [`PREV_INUSE` flag](https://elixir.bootlin.com/glibc/glibc-2.39/source/malloc/malloc.c#L1210), which is set when the previous adjacent chunk (the chunk ahead) is in use
-* `M` is the [`IS_MMAPPED` flag](https://elixir.bootlin.com/glibc/glibc-2.39/source/malloc/malloc.c#L1243), which is set when the chunk is allocated via `mmap()` rather than a heap mechanism such as `malloc()`
-* `A` is the [`NON_MAIN_ARENA` flag](https://elixir.bootlin.com/glibc/glibc-2.39/source/malloc/malloc.c#L1221), which is set when the chunk is not located in `main_arena`; we will get to _Arenas_ in a later section, but in essence every created thread is provided a different arena (up to a limit) and chunks in these arenas have the `A` bit set
+* `P` は [`PREV_INUSE` フラグ](https://elixir.bootlin.com/glibc/glibc-2.39/source/malloc/malloc.c#L1210)で、直前に隣接するチャンク(前方のチャンク)が使用中のときにセットされます
+* `M` は [`IS_MMAPPED` フラグ](https://elixir.bootlin.com/glibc/glibc-2.39/source/malloc/malloc.c#L1243)で、`malloc()` などのヒープの仕組みではなく `mmap()` でチャンクが確保されたときにセットされます
+* `A` は [`NON_MAIN_ARENA` フラグ](https://elixir.bootlin.com/glibc/glibc-2.39/source/malloc/malloc.c#L1221)で、チャンクが `main_arena` にないときにセットされます。_arena_ については後の節で扱いますが、要するに、作成された各スレッドには(上限まで)別々のarenaが与えられ、それらのarena内のチャンクには `A` ビットがセットされます
 
-`prev_size` is set [if the previous adjacent chunk is **free**](https://elixir.bootlin.com/glibc/glibc-2.39/source/malloc/malloc.c#L1212), as calculated by `P` being `0`. If it is not, the heap _saves space_ and `prev_size` is part of the **previous chunk's user data**. If it is, then `prev_size` stores the size of the previous chunk.
+`prev_size` は、[直前に隣接するチャンクが**解放済み**の場合](https://elixir.bootlin.com/glibc/glibc-2.39/source/malloc/malloc.c#L1212)に設定されます。これは `P` が `0` であることから判断されます。解放済みでなければ、ヒープは_領域を節約_し、`prev_size` は**前のチャンクのユーザーデータ**の一部になります。解放済みの場合は、`prev_size` に前のチャンクのサイズが格納されます。
 
 ![](<../../.gitbook/assets/image (13).png>)
 
-## Free Chunks
+## 解放済みチャンク
 
-Free chunks have additional metadata to handle the linking between them.
+解放済みチャンクには、チャンク同士をつなぐための追加のメタデータがあります。
 
 <figure><img src="../../.gitbook/assets/free_chunks.svg" alt=""><figcaption></figcaption></figure>
 
-This can be seen in the [`malloc_state`](https://elixir.bootlin.com/glibc/glibc-2.39/source/malloc/malloc.c#L1136) struct:
+これは [`malloc_state`](https://elixir.bootlin.com/glibc/glibc-2.39/source/malloc/malloc.c#L1136) 構造体で確認できます。
 
 ```c
 struct malloc_chunk {

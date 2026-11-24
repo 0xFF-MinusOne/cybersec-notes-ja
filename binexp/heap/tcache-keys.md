@@ -1,10 +1,10 @@
 ---
-description: A primitive double-free protection
+description: 初歩的な double free 対策
 ---
 
 # Tcache Keys
 
-Starting from glibc 2.29, the tcache was hardened by the addition of a second field in the `tcache_entry` struct, the [`key`](https://elixir.bootlin.com/glibc/glibc-2.29/source/malloc/malloc.c#L2908):
+glibc 2.29 以降、tcache は `tcache_entry` 構造体に 2 つ目のフィールドである [`key`](https://elixir.bootlin.com/glibc/glibc-2.29/source/malloc/malloc.c#L2908) を追加することで強化されました。
 
 ```c
 typedef struct tcache_entry
@@ -15,7 +15,7 @@ typedef struct tcache_entry
 } tcache_entry;
 ```
 
-It's a pointer to a `tcache_perthread_struct`. In the [`tcache_put()`](https://elixir.bootlin.com/glibc/glibc-2.29/source/malloc/malloc.c#L2928) function, we can see what `key` is set to:
+これは `tcache_perthread_struct` へのポインタです。[`tcache_put()`](https://elixir.bootlin.com/glibc/glibc-2.29/source/malloc/malloc.c#L2928) 関数を見ると、`key` に何が設定されるかが分かります。
 
 ```c
 /* Caller must ensure that we know tc_idx is valid and there's room
@@ -35,7 +35,7 @@ static __always_inline void tcache_put (mchunkptr chunk, size_t tc_idx)
 }
 ```
 
-When a chunk is freed and `tcache_put()` is called on it, the `key` field is set to the location of the `tcache_perthread_struct`. Why is this relevant? Let's check [the tcache security checks in `_int_free()`](https://elixir.bootlin.com/glibc/glibc-2.29/source/malloc/malloc.c#L4189):
+チャンクが解放されて `tcache_put()` が呼ばれると、`key` フィールドには `tcache_perthread_struct` の位置が設定されます。これがなぜ重要なのでしょうか。[`_int_free()` 内の tcache のセキュリティチェック](https://elixir.bootlin.com/glibc/glibc-2.29/source/malloc/malloc.c#L4189)を確認しましょう。
 
 ```c
 #if USE_TCACHE
@@ -73,19 +73,19 @@ When a chunk is freed and `tcache_put()` is called on it, the `key` field is set
 #endif
 ```
 
-The chunk being freed is variable `e`. We can see here that before `tcache_put()` is called on it, there is a check being done:
+解放されるチャンクは変数 `e` です。ここで、`tcache_put()` が呼ばれる前に、次のチェックが行われていることが分かります。
 
 ```c
 if (__glibc_unlikely (e->key == tcache))
 ```
 
-The check determines whether the `key` field of the chunk `e` is set to the address of the `tcache_perthread_struct` already. Remember that **this happens when it is put into the tcache with `tcache_put()`**! If the pointer is already there, there is a **very** high chance that it's because the chunk has **already been freed**, in which case it's a double-free!
+このチェックは、チャンク `e` の `key` フィールドがすでに `tcache_perthread_struct` のアドレスになっているかどうかを判定します。**これは `tcache_put()` で tcache に入れられるときに設定される**ことを思い出してください。ポインタがすでにそこにある場合、そのチャンクが**すでに解放済み**であるためである可能性が**非常に**高く、その場合は double free です。
 
-It's not a 100% guaranteed double-free though - as the comment above it says:
+ただし、100% 確実に double free だとは限りません。上のコメントにもあるとおりです。
 
 > This test succeeds on double free.  However, we don't 100% trust it (it also matches random payload data at a 1 in 2^\<size\_t> chance), so verify it's not an unlikely coincidence before aborting.
 
-There is a `1/2^<size_t>` chance that the `key` being `tcache_perthread_struct` already is a coincidence. To verify, it simply iterates through the tcache bin and compares the chunks to the one being freed:
+`key` がすでに `tcache_perthread_struct` になっているのが偶然である確率は `1/2^<size_t>` あります。これを確かめるために、tcache bin を走査して、各チャンクを解放しようとしているチャンクと比較します。
 
 ```c
 tcache_entry *tmp;
@@ -97,19 +97,19 @@ for (tmp = tcache->entries[tc_idx]; tmp; tmp = tmp->next)
    few cycles, but don't abort.  */
 ```
 
-Iterates through each entry, calls it `tmp` and compares it to `e`. If equal, it detected a double-free.
+各エントリを順にたどって `tmp` とし、`e` と比較します。等しければ double free を検出したことになります。
 
 {% hint style="danger" %}
-You can think of the `key` as an effectively random value (due to ASLR) that gets checked against, and if it's the correct value then something is suspicious.
+`key` は(ASLR により)実質的にランダムな値で、それと照合され、正しい値であれば何かが怪しい、と考えるとよいでしょう。
 {% endhint %}
 
-So, what can we do against this? Well, this protection doesn't affect us _that_ much - it stops a simple double-free, but if we have any kind of UAF primitive we can easily overwrite `e->key`. Even with a single byte, we still have a 255/256 chance of overwriting it to something that doesn't match `key`. Creating fake tcache chunks doesn't matter either, as even in the latest glibc version there is [no `key` check in `tcache_get()`](https://elixir.bootlin.com/glibc/glibc-2.39/source/malloc/malloc.c#L3174), meaning tcache poisoning is still doable.
+では、これに対して何ができるでしょうか。実は、この保護が私たちに与える影響は_それほど_大きくありません。単純な double free は防げますが、何らかの UAF プリミティブがあれば `e->key` を簡単に上書きできます。1 バイトだけでも、`key` と一致しない値に書き換えられる確率は 255/256 あります。偽の tcache チャンクを作る場合も問題ありません。最新の glibc でも [`tcache_get()` には `key` のチェックがない](https://elixir.bootlin.com/glibc/glibc-2.39/source/malloc/malloc.c#L3174)ため、tcache poisoning は依然として可能です。
 
-In fact, the `key` can even be **helpful** for us - the `fd` pointer of the tcache chunk is mangled, so a UAF does not guarantee a heap leak. The `key` field is not mangled, so if we can leak the location of `tcache_perthread_struct` instead, this gives us a heap leak as it is always located at `heap_base + 0x10`.
+それどころか、`key` は私たちにとって**役に立つ**こともあります。tcache チャンクの `fd` ポインタはマングリングされているため、UAF があってもヒープリークが得られるとは限りません。一方、`key` フィールドはマングリングされていないので、代わりに `tcache_perthread_struct` の位置をリークできれば、それは常に `heap_base + 0x10` にあるため、ヒープリークになります。
 
 ***
 
-In glibc 2.34, the `key` field was [updated from a `tcache_perthread_struct *` to a `uintptr_t`](https://elixir.bootlin.com/glibc/glibc-2.34/source/malloc/malloc.c#L3017). Instead of `tcache_put()` setting `key` to the location of the `tcache_perthread_struct`, it sets it to [a new variable called `tcache_key`](https://elixir.bootlin.com/glibc/glibc-2.34/source/malloc/malloc.c#L3068):
+glibc 2.34 では、`key` フィールドが [`tcache_perthread_struct *` から `uintptr_t` に変更されました](https://elixir.bootlin.com/glibc/glibc-2.34/source/malloc/malloc.c#L3017)。`tcache_put()` は `key` に `tcache_perthread_struct` の位置を設定する代わりに、[`tcache_key` という新しい変数](https://elixir.bootlin.com/glibc/glibc-2.34/source/malloc/malloc.c#L3068)の値を設定します。
 
 ```c
 static __always_inline void tcache_put (mchunkptr chunk, size_t tc_idx)
@@ -127,10 +127,10 @@ static __always_inline void tcache_put (mchunkptr chunk, size_t tc_idx)
 ```
 
 {% hint style="info" %}
-Note the [Safe-Linking `PROTECT_PTR`](safe-linking.md) as well!
+[Safe-Linking の `PROTECT_PTR`](safe-linking.md) にも注目してください。
 {% endhint %}
 
-What is `tcache_key`? It's defined [here](https://elixir.bootlin.com/glibc/glibc-2.34/source/malloc/malloc.c#L3035) and set directly below, in the [`tcache_key_initialise()`](https://elixir.bootlin.com/glibc/glibc-2.34/source/malloc/malloc.c#L3047) function:
+`tcache_key` とは何でしょうか。[ここ](https://elixir.bootlin.com/glibc/glibc-2.34/source/malloc/malloc.c#L3035)で定義され、そのすぐ下にある [`tcache_key_initialise()`](https://elixir.bootlin.com/glibc/glibc-2.34/source/malloc/malloc.c#L3047) 関数で設定されます。
 
 ```c
 static void tcache_key_initialize (void)
@@ -146,8 +146,8 @@ static void tcache_key_initialize (void)
 }
 ```
 
-It attempts to call `__getrandom()`, which is defined as a stub [here](https://elixir.bootlin.com/glibc/glibc-2.34/source/stdlib/getrandom.c#L25) and for Linux [here](https://elixir.bootlin.com/glibc/glibc-2.34/source/sysdeps/unix/sysv/linux/getrandom.c#L27); it just uses a syscall to read `n` random bytes. If that fails for some reason, it calls the [`random_bits()`](https://elixir.bootlin.com/glibc/glibc-2.34/source/include/random-bits.h#L31) function instead, which generates a pseudo-random number seeded by the time. Long story short: **`tcache_key` is random**. The [check in `_int_free()` still exists](https://elixir.bootlin.com/glibc/glibc-2.34/source/malloc/malloc.c#L4346), and the operation is the same, just it's completely random rather than based on ASLR. As the comment above it says
+ここでは `__getrandom()` を呼び出そうとします。これは[ここ](https://elixir.bootlin.com/glibc/glibc-2.34/source/stdlib/getrandom.c#L25)にスタブとして、Linux 向けには[ここ](https://elixir.bootlin.com/glibc/glibc-2.34/source/sysdeps/unix/sysv/linux/getrandom.c#L27)に定義されており、システムコールで `n` バイトのランダムなバイト列を読み取るだけです。何らかの理由で失敗した場合は、代わりに [`random_bits()`](https://elixir.bootlin.com/glibc/glibc-2.34/source/include/random-bits.h#L31) 関数を呼び出し、時刻をシードにした疑似乱数を生成します。要するに、**`tcache_key` はランダムです**。[`_int_free()` 内のチェックも依然として存在し](https://elixir.bootlin.com/glibc/glibc-2.34/source/malloc/malloc.c#L4346)、動作は同じですが、ASLR に基づくのではなく完全にランダムになった点が違います。上のコメントにもあるとおりです。
 
 > The value of tcache\_key does not really have to be a cryptographically secure random number.  It only needs to be arbitrary enough so that it does not collide with values present in applications.  \[...]
 
-This isn't a huge change - it's still only straight double-frees that are affected. We can no longer leak the heap via the `key`, however.
+大きな変更ではなく、影響を受けるのは単純な double free だけです。ただし、`key` 経由でヒープをリークすることはできなくなりました。

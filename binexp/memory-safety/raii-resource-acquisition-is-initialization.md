@@ -1,9 +1,9 @@
 # RAII (Resource Acquisition is Initialization)
 
-The idea of RAII is that resource lifetime is tied to object lifetime. Resources are more than just memory - they can be file descriptors, sockets or a variety of things.
+RAII の考え方は、リソースの生存期間(lifetime)をオブジェクトの生存期間に結び付けることです。リソースとはメモリだけではなく、ファイルディスクリプタ(file descriptor)やソケット、そのほかさまざまなものを指します。
 
-[RAII](https://doc.rust-lang.org/rust-by-example/scope/raii.html) ensures that whenever an object goes out of scope, its destructor is called and its owned resources are freed. This means **you never have to manually free memory** and protects you against resource leaks (like memory leaks).
+[RAII](https://doc.rust-lang.org/rust-by-example/scope/raii.html) により、オブジェクトがスコープ(scope)から外れるたびにデストラクタ(destructor)が呼ばれ、そのオブジェクトが所有するリソースが解放されます。つまり**メモリを手動で解放する必要が一切なくなり**、リソースリーク(メモリリークなど)を防げます。
 
-Modern C++ actually supports RAII, which is part of a drive to improve C++ memory safety. It is worth noting, however, that RAII is no silver bullet - with pointers in C++ the same as always, RAII can still allow for memory corruption, as it does nothing about dangling pointers. Every little help, though!
+現代の C++ は実際に RAII をサポートしており、これは C++ のメモリ安全性を高めるための取り組みの一環です。ただし、RAII は万能薬ではないことに注意してください。C++ のポインタは従来どおりなので、RAII でもダングリングポインタ(dangling pointer)には何もできず、メモリ破壊(memory corruption)は起こり得ます。それでも、少しでも助けになるのはありがたいことです。
 
-We will soon see that [Rust](rust.md) massively buffs up RAII with a host of compile-time checks, providing proper security.
+[Rust](rust.md) が RAII をコンパイル時の数々のチェックで大幅に強化し、きちんとしたセキュリティを実現していることは、このあとすぐ見ていきます。

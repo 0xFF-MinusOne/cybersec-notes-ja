@@ -1,25 +1,25 @@
 ---
-description: The better way to calculate offsets
+description: オフセットを計算するより良い方法
 ---
 
-# De Bruijn Sequences
+# De Bruijn 列(De Bruijn Sequences)
 
-De Bruijn sequences of order `n` is simply a sequence where no string of `n` characters is repeated. This makes finding the offset until EIP much simpler - we can just pass in a De Bruijn sequence, get the value within EIP and find the **one possible match** within the sequence to calculate the offset. Let's do this on the **ret2win** binary.
+位数 `n` の De Bruijn 列とは、長さ `n` の文字列がどれも繰り返し現れない列のことです。これにより、EIP までのオフセットを求めるのがずっと簡単になります。De Bruijn 列を入力し、EIP に入った値を取得して、列の中で**一致する箇所がひとつだけ**であることを利用してオフセットを計算できます。**ret2win** のバイナリで試してみましょう。
 
-### Generating the Pattern
+### パターンの生成
 
-Again, `radare2` comes with a nice command-line tool \(called `ragg2`\) that can generate it for us. Let's create a sequence of length `100`.
+ここでも `radare2` には、パターンを生成してくれる便利なコマンドラインツール(`ragg2`)が付属しています。長さ `100` の列を作ってみましょう。
 
 ```text
 $ ragg2 -P 100 -r
 AAABAACAADAAEAAFAAGAAHAAIAAJAAKAALAAMAANAAOAAPAAQAARAASAATAAUAAVAAWAAXAAYAAZAAaAAbAAcAAdAAeAAfAAgAAh
 ```
 
-The `-P` specifies the length while `-r` tells it to show ascii bytes rather than hex pairs.
+`-P` は長さを指定し、`-r` は 16 進数のペアではなく ASCII のバイトで表示するよう指示します。
 
-### Using the Pattern
+### パターンの使用
 
-Now we have the pattern, let's just input it in `radare2` when prompted for input, make it crash and then calculate how far along the sequence the EIP is. Simples.
+パターンができたので、入力を求められたときに `radare2` 上でそのまま入力してクラッシュさせ、EIP が列のどこにあるかを計算します。簡単です。
 
 ```text
 $ r2 -d -A vuln
@@ -31,21 +31,21 @@ child stopped with signal 11
 [+] SIGNAL 11 errno=0 addr=0x41534141 code=1 ret=0
 ```
 
-The address it crashes on is `0x41534141`; we can use `radare2`'s in-built `wopO` command to work out the offset.
+クラッシュしたアドレスは `0x41534141` です。`radare2` に組み込まれた `wopO` コマンドでオフセットを求められます。
 
 ```text
 [0x41534141]> wopO 0x41534141
 52
 ```
 
-Awesome - we get the correct value!
+すばらしい、正しい値が得られました。
 
-We can also be lazy and not copy the value.
+値をコピーしなくても済ませることもできます。
 
 ```text
 [0x41534141]> wopO `dr eip`
 52
 ```
 
-The backticks means the `dr eip` is calculated first, before the `wopO` is run on the result of it.
+バッククォートは、`dr eip` を先に評価し、その結果に対して `wopO` を実行することを意味します。
 

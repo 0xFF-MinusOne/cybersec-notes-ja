@@ -2,7 +2,7 @@
 
 ## The Code
 
-Writing a Char Module is suprisingly simple. First, we specify what happens on `init` (loading of the module) and `exit` (unloading of the module). We need some special headers for this.
+Char モジュールを書くのは、意外なほど簡単です。まず、`init`(モジュールの読み込み)と `exit`(モジュールの取り外し)で何が起こるかを指定します。そのために、いくつか特別なヘッダが必要です。
 
 ```c
 #include <linux/init.h>
@@ -24,17 +24,17 @@ module_exit(intro_exit);
 
 ```
 
-It looks simple, because it _is_ simple. For now, anyway.
+簡単に見えますが、実際に簡単です。少なくとも今のところは。
 
-First we set the license, because otherwise we get a warning, and I hate warnings. Next we tell the module what to do on load (`intro_init()`) and unload (`intro_exit()`). Note we put parameters as `void`, this is because kernel modules are very picky about [requiring parameters](https://stackoverflow.com/questions/40309582/kernel-module-compiler-error-function-declaration-isn-t-a-prototype-werror-st) (even if just void).
+まずライセンスを設定します。設定しないと警告が出て、私は警告が嫌いだからです。次に、読み込み時(`intro_init()`)と取り外し時(`intro_exit()`)に何をするかをモジュールに伝えます。パラメータを `void` にしている点に注意してください。カーネルモジュールは、[パラメータを必須とすること](https://stackoverflow.com/questions/40309582/kernel-module-compiler-error-function-declaration-isn-t-a-prototype-werror-st)(たとえ void だけであっても)に非常に厳しいためです。
 
-We then register the purposes of the functions using `module_init()` and `module_exit()`.
+続いて、`module_init()` と `module_exit()` を使って、それぞれの関数の役割を登録します。
 
-Note that we use `printk` rather than `printf`. GLIBC doesn't exist in kernel mode, and instead we use C's in-built kernel functionality. `KERN_ALERT` is specifies the type of message sent, and [there are many more types](https://www.kernel.org/doc/html/latest/core-api/printk-basics.html).
+`printf` ではなく `printk` を使っている点にも注意してください。カーネルモードには GLIBC が存在せず、代わりに C に組み込まれたカーネルの機能を使います。`KERN_ALERT` は送るメッセージの種類を指定するもので、[ほかにも多くの種類があります](https://www.kernel.org/doc/html/latest/core-api/printk-basics.html)。
 
 ## Compiling
 
-Compiling a Kernel Object can seem a little more complex as we use a [`Makefile`](https://opensource.com/article/18/8/what-how-makefile), but it's surprisingly simple:
+カーネルオブジェクトのコンパイルは、[`Makefile`](https://opensource.com/article/18/8/what-how-makefile) を使うので少し複雑に見えるかもしれませんが、実際には意外と簡単です。
 
 ```
 obj-m += intro.o
@@ -43,34 +43,34 @@ all:
 	$(MAKE) -C /lib/modules/$(shell uname -r)/build M=$(PWD) modules
 ```
 
-`$(MAKE)` is a special flag that effectively calls `make`, but it propagate all same flags that _our_ `Makefile` was called with. So, for example, if we call
+`$(MAKE)` は特別なフラグで、実質的に `make` を呼び出しますが、_私たちの_ `Makefile` が呼び出されたときと同じフラグをすべて引き継ぎます。例えば、次のように呼び出すと、
 
 ```bash
 $ make -j 8
 ```
 
-Then `$(MAKE)` will become `make -j 8`. Essentially, `$(MAKE)` is `make`, which compiles the module. The files produced are defined at the top as `obj-m`. Note that compilation is **unique per kernel**, which is why the compiling process uses your unique kernel build section.
+`$(MAKE)` は `make -j 8` になります。本質的に、`$(MAKE)` はモジュールをコンパイルする `make` です。生成されるファイルは、先頭の `obj-m` で定義されています。コンパイルは **カーネルごとに固有** であるため、コンパイル処理がその環境固有のカーネルビルドの領域を使っている点に注意してください。
 
 ## Using the Kernel Module
 
-Now we've got a `ko` file compiled, we can add it to the list of active modules:
+`ko` ファイルのコンパイルができたので、有効なモジュールの一覧に追加できます。
 
 ```
 $ sudo insmod test.ko
 ```
 
-If it's successful, there will be no response. But where did it print to?
+成功すると、何も出力されません。では、どこに出力されたのでしょうか。
 
-Remember, the kernel program has no concept of userspace; it does not know you ran it, nor does it bother communicating with userspace. Instead, this code runs in the kernel, and we can check the output using `sudo dmesg`.
+カーネルのプログラムはユーザー空間という概念を持たないことを思い出してください。誰が実行したのかも知りませんし、ユーザー空間とやり取りする気もありません。このコードはカーネル内で動作するので、出力は `sudo dmesg` で確認できます。
 
 ```
 $ sudo dmesg | tail -n 1
 [ 3645.657331] Custom Module Started!
 ```
 
-Here we grab the last line using `tail` - as you can see, our `printk` is called!
+ここでは `tail` で最後の 1 行を取り出しています。`printk` が呼ばれたことが分かります。
 
-Now let's unload the module:
+では、モジュールを取り外しましょう。
 
 ```
 $ sudo rmmod test
@@ -78,8 +78,8 @@ $ sudo dmesg | tail -n 1
 [ 4046.904898] Custom Module Stopped :(
 ```
 
-And there our `intro_exit` is called.
+こうして `intro_exit` が呼ばれます。
 
 {% hint style="info" %}
-You can view currently loaded modules using the `lsmod` command
+`lsmod` コマンドで、現在読み込まれているモジュールを確認できます。
 {% endhint %}

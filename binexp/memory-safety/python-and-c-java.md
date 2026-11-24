@@ -1,5 +1,5 @@
-# Python (and C#, Java)
+# Python(と C#、Java)
 
-Python has large overheads in its runtime to provide memory safety. Objects are allocated on a managed heap and never freed manually - instead, the **garbage collector** keeps track of references and frees objects once they become unreachable. Python also does not allow the use of pointers, and performs bounds checking on access for lists.
+Python は、メモリ安全性を提供するために、ランタイムに大きなオーバーヘッドを抱えています。オブジェクトはマネージドヒープ(managed heap)上に確保され、手動で解放されることはありません。代わりに**ガベージコレクタ(garbage collector)**が参照を追跡し、到達できなくなったオブジェクトを解放します。また、Python ではポインタを使えず、リストへのアクセス時に境界チェック(bounds checking)が行われます。
 
-C# and Java are similar in operation.
+C# と Java も、仕組みは似ています。

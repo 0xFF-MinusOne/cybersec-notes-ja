@@ -1,5 +1,5 @@
 # Kernel ROP - Stack Pivoting
 
-While the kernel cannot execute code in userland, it _can_ set its RSP to a userland location, so it is possible to stack pivot to userland as long as all of the gadgets used are in kernel space.
+カーネルはユーザーランドのコードを実行できませんが、RSP をユーザーランドの場所に設定することは _できます_。そのため、使うガジェットがすべてカーネル空間にある限り、ユーザーランドへスタックピボット(stack pivot)することは可能です。
 
-I don't think an example is necessary for this.
+これについては、例は不要だと思います。

@@ -1,4 +1,3 @@
 # Kernel
 
-_**Heavily**_ beta
-
+_**かなり**_ベータ版です

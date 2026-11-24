@@ -1,7 +1,7 @@
-# Introduction to the Heap
+# ヒープの紹介
 
-Unlike the stack, heap is an area of memory that can be dynamically allocated. This means that when you need new space, you can "request" more from the heap.
+スタックと違い、ヒープは動的に確保できるメモリ領域です。つまり、新しい領域が必要になったときに、ヒープにさらに「要求」できます。
 
-In C, this often means using functions such as `malloc()` to request the space. However, the heap is very slow and can take up tons of space. This means that the developer has to tell libc when the heap data is "finished with", and it does this via calls to `free()` which mark the area as available. But where there are humans there will be implementation flaws, and no amount of protection will ever ensure code is completely safe.
+C では、多くの場合 `malloc()` などの関数を使って領域を要求します。しかし、ヒープは非常に低速で、大量の領域を消費しかねません。そのため、開発者はヒープのデータが「用済み」になったことを libc に伝える必要があり、これは `free()` を呼び出して領域を利用可能としてマークすることで行います。ところが、人間が関わる以上、実装上の欠陥は生まれるもので、どれだけ保護を施してもコードが完全に安全になることはありません。
 
-In the following sections, we will only discuss 64-bit systems (with the exception of some parts that were written long ago). The theory is the same, but pretty much any heap challenge (or real-world application) will be on 64-bit systems.
+以降の節では、64 ビットシステムのみを扱います(ずいぶん前に書かれた一部を除きます)。理論は同じですが、ほとんどすべてのヒープの問題(あるいは実世界のアプリケーション)は 64 ビットシステム上にあるためです。

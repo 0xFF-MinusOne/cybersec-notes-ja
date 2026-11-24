@@ -1,10 +1,10 @@
 ---
-description: The differences between the sizes
+description: ビット幅による違い
 ---
 
-# 32- vs 64-bit
+# 32 ビットと 64 ビット
 
-Everything we have done so far is applicable to 64-bit as well as 32-bit; the only thing you would need to change is switch out the `p32()` for `p64()` as the memory addresses are longer.
+ここまでに行ってきたことは、32 ビットにも 64 ビットにも当てはまります。変更が必要なのは、メモリアドレスが長くなるため、`p32()` を `p64()` に置き換える点だけです。
 
-The real difference between the two, however, is the way you pass parameters to functions \(which we'll be looking at much closer soon\); in 32-bit, all parameters are pushed to the stack before the function is called. In 64-bit, however, the first 6 are stored in the registers RDI, RSI, RDX, RCX, R8 and R9 respectively as per the [calling convention](https://en.wikipedia.org/wiki/X86_calling_conventions). Note that different Operating Systems also have different calling conventions.
+ただし、両者の本当の違いは関数にパラメータを渡す方法です(このあとすぐ詳しく見ます)。32 ビットでは、関数を呼び出す前にすべてのパラメータがスタックに push されます。一方 64 ビットでは、[呼び出し規約(calling convention)](https://en.wikipedia.org/wiki/X86_calling_conventions)に従い、最初の 6 個がそれぞれ RDI、RSI、RDX、RCX、R8、R9 レジスタに格納されます。なお、オペレーティングシステムごとに呼び出し規約も異なります。
 

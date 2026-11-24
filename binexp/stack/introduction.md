@@ -1,12 +1,12 @@
 ---
-description: An introduction to binary exploitation
+description: バイナリエクスプロイトの入門
 ---
 
 # Introduction
 
-**Binary Exploitation** is about finding vulnerabilities in programs and utilising them to do what you wish. Sometimes this can result in an authentication bypass or the leaking of classified information, but occasionally (if you're lucky) it can also result in Remote Code Execution (RCE). The most basic forms of binary exploitation occur on the **stack**, a region of memory that stores temporary variables created by functions in code.
+**バイナリエクスプロイト(Binary Exploitation)** とは、プログラムの脆弱性を見つけ、それを利用して思いどおりのことをさせる技術です。結果として認証のバイパスや機密情報の漏洩につながることもありますが、運がよければリモートコード実行(Remote Code Execution, RCE)に至ることもあります。最も基本的なバイナリエクスプロイトは **スタック(stack)** 上で起こります。スタックは、コード中の関数が作る一時的な変数を格納するメモリ領域です。
 
-When a new function is called, a memory address in the **calling** function is pushed to the stack - this way, the program knows where to return to once the called function finishes execution. Let's look at a basic binary to show this.
+新しい関数が呼ばれると、**呼び出し元(calling)** の関数内のメモリアドレスがスタックに push されます。こうして、呼び出された関数の実行が終わったときに、プログラムはどこへ戻ればよいかを知ります。基本的なバイナリで実際に見てみましょう。
 
 {% file src="../../.gitbook/assets/introduction.zip" %}
 Introduction
@@ -14,21 +14,21 @@ Introduction
 
 ## Analysis
 
-The binary has two files - `source.c` and `vuln`; the latter is an `ELF` file, which is the executable format for Linux (it is recommended to follow along with this with a Virtual Machine of your own, preferably Linux).
+このバイナリには `source.c` と `vuln` の2つのファイルがあります。後者は Linux の実行可能ファイル形式である `ELF` ファイルです(手元に自分用の仮想マシン、できれば Linux を用意して、一緒に試すことをおすすめします)。
 
-We're gonna use a tool called `radare2` to analyse the behaviour of the binary when functions are called.
+関数が呼ばれたときのバイナリの動作を解析するために、`radare2` というツールを使います。
 
 ```
 $ r2 -d -A vuln
 ```
 
-The `-d` runs it while the `-A` performs analysis. We can disassemble `main` with
+`-d` は実行を、`-A` は解析を行うオプションです。次のコマンドで `main` を逆アセンブルできます。
 
 ```
 s main; pdf
 ```
 
-`s main` seeks (moves) to main, while `pdf` stands for **P**rint **D**isassembly **F**unction (literally just disassembles it).
+`s main` は main へシーク(移動)し、`pdf` は **P**rint **D**isassembly **F**unction の略です(要するに逆アセンブルするだけです)。
 
 ```
 0x080491ab      55             push ebp
@@ -42,35 +42,35 @@ s main; pdf
 0x080491c2      c3             ret
 ```
 
-The call to `unsafe` is at `0x080491bb`, so let's break there.
+`unsafe` の呼び出しは `0x080491bb` にあるので、そこで停止させましょう。
 
 ```
 db 0x080491bb
 ```
 
-`db` stands for **d**ebug **b**reakpoint, and just sets a breakpoint. A breakpoint is simply somewhere which, when reached, pauses the program for you to run other commands. Now we run `dc` for **d**ebug **c**ontinue; this just carries on running the file.
+`db` は **d**ebug **b**reakpoint の略で、ブレークポイントを設定します。ブレークポイントとは、到達するとプログラムを一時停止させて、ほかのコマンドを実行できるようにする地点のことです。続いて `dc`(**d**ebug **c**ontinue)を実行します。これはファイルの実行を再開するだけのコマンドです。
 
-It should break before `unsafe` is called; let's analyse the top of the stack now:
+`unsafe` が呼ばれる直前で停止するはずです。ここでスタックの先頭を見てみましょう。
 
 ```
 [0x08049172]> pxw @ esp
 0xff984af0 0xf7efe000         [...]
 ```
 
-`pxw` tells r2 to analyse the hex as **words**, that is, 32-bit values. I only show the first value here, which is `0xf7efe000`. This value is stored at the top of the stack, as ESP points to the top of the stack - in this case, that is `0xff984af0`.
+`pxw` は、16進数データを**ワード**、つまり32ビット値として解析するよう r2 に指示します。ここでは最初の値だけを示しており、それは `0xf7efe000` です。ESP がスタックの先頭を指しているため、この値はスタックの先頭に格納されています。ここでは、それは `0xff984af0` です。
 
 {% hint style="info" %}
-Note that the value `0xf7efe000` is random - it's an artefact of previous processes that have used that part of the stack. The stack is never wiped, it's just marked as usable, so before data actually gets put there the value is completely dependent on your system.
+値 `0xf7efe000` はランダムである点に注意してください。これは、スタックのその部分を以前に使っていたプロセスの名残です。スタックが消去されることはなく、使用可能として印を付けられるだけです。そのため、実際にデータが置かれるまでは、その値はお使いのシステムに完全に依存します。
 {% endhint %}
 
-Let's move one more instruction with `ds`, **d**ebug **s**tep, and check the stack again. This will execute the `call sym.unsafe` instruction.
+`ds`(**d**ebug **s**tep)で命令を1つ進めて、もう一度スタックを確認しましょう。これで `call sym.unsafe` 命令が実行されます。
 
 ```
 [0x08049172]> pxw @ esp
 0xff984aec  0x080491c0 0xf7efe000 [...]
 ```
 
-Huh, something's been pushed onto the top of the stack - the value `0x080491c0`. This looks like it's in the binary - but where? Let's look back at the disassembly from before:
+おや、スタックの先頭に何かが push されています。値は `0x080491c0` です。これはバイナリ内のアドレスのようですが、どこでしょうか。先ほどの逆アセンブル結果を見返してみましょう。
 
 ```
 [...]
@@ -80,11 +80,11 @@ Huh, something's been pushed onto the top of the stack - the value `0x080491c0`.
 [...]
 ```
 
-We can see that `0x080491c0` is the memory address of the instruction _after_ the call to `unsafe`. Why? This is how the program knows _where to return to after `unsafe()` has finished_.
+`0x080491c0` は、`unsafe` の呼び出しの _次の_ 命令のメモリアドレスだと分かります。なぜでしょうか。これが、プログラムが _`unsafe()` の終了後にどこへ戻ればよいか_ を知る仕組みだからです。
 
 ## Weaknesses
 
-But as we're interested in binary exploitation, let's see how we can possibly break this. First, let's disassemble `unsafe` and break on the `ret` instruction; `ret` is the equivalent of `pop eip`, which will get the saved return pointer we just analysed on the stack into the `eip` register. Then let's continue and spam a bunch of characters into the input and see how that could affect it.
+さて、私たちはバイナリエクスプロイトに興味があるので、これをどうやって壊せるか見てみましょう。まず `unsafe` を逆アセンブルし、`ret` 命令にブレークポイントを置きます。`ret` は `pop eip` と等価で、先ほど見たスタック上の保存済みリターンポインタを `eip` レジスタに取り込みます。そのうえで実行を続け、入力に大量の文字を流し込んで、どんな影響が出るか見てみましょう。
 
 ```
 [0x08049172]> db 0x080491aa
@@ -93,30 +93,30 @@ Overflow me
 AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
 ```
 
-Now let's read the value at the location the return pointer was at previously, which as we saw was `0xff984aec`.
+次に、先ほど見たとおりリターンポインタがあった場所、`0xff984aec` の値を読んでみましょう。
 
 ```
 [0x080491aa]> pxw @ 0xff984aec
 0xff984aec  0x41414141 0x41414141 0x41414141 0x41414141  AAAAAAAAAAAAAAAA
 ```
 
-Huh?
+えっ?
 
-It's quite simple - we inputted _more data than the program expected_, which resulted in us overwriting more of the stack than the developer expected. The saved return pointer is _also_ on the stack, meaning we managed to overwrite it. As a result, on the `ret`, the value popped into `eip` won't be in the previous function but rather `0x41414141`. Let's check with `ds`.
+理由は単純です。プログラムが想定していたよりも _多くのデータ_ を入力したため、開発者が想定していたよりも広くスタックを上書きしてしまったのです。保存済みのリターンポインタも _同じく_ スタック上にあるので、それを上書きできたことになります。その結果、`ret` で `eip` に取り込まれる値は、呼び出し元の関数のアドレスではなく `0x41414141` になります。`ds` で確かめましょう。
 
 ```
 [0x080491aa]> ds
 [0x41414141]>
 ```
 
-And look at the new prompt - `0x41414141`. Let's run `dr eip` to make sure that's the value in `eip`:
+新しいプロンプトを見てください。`0x41414141` です。`dr eip` を実行して、それが本当に `eip` の値になっているか確認しましょう。
 
 ```
 [0x41414141]> dr eip
 0x41414141
 ```
 
-Yup, it is! We've successfully hijacked the program execution! Let's see if it crashes when we let it run with `dc`.
+そのとおりです。プログラムの実行を見事にハイジャックできました。`dc` で実行を再開したらクラッシュするか見てみましょう。
 
 ```
 [0x41414141]> dc
@@ -124,17 +124,17 @@ child stopped with signal 11
 [+] SIGNAL 11 errno=0 addr=0x41414141 code=1 ret=0
 ```
 
-`radare2` is very useful and prints out the address that causes it to crash. If you cause the program to crash outside of a debugger, it will usually say `Segmentation Fault`, which _could_ mean a variety of things, but usually that you have overwritten EIP.
+`radare2` は非常に便利で、クラッシュの原因となったアドレスを表示してくれます。デバッガの外でプログラムをクラッシュさせた場合は、通常 `Segmentation Fault` と表示されます。これはさまざまな原因を意味しうるものの、たいていは EIP を上書きしたことを示しています。
 
 {% hint style="info" %}
-Of course, you can prevent people from writing more characters than expected when making your program, usually using _other_ C functions such as `fgets()`; `gets()` is **intrinsically unsafe** because it _doesn't check the length of the input_, meaning that the presence of `gets()` is **always** something you should check out in a program. It is **also** possible to give `fgets()` the wrong parameters, meaning it _still_ takes in too many characters.
+もちろん、プログラムを作る際に、想定より多くの文字を書き込めないようにすることはできます。通常は `fgets()` のような _別の_ C 関数を使います。`gets()` は _入力の長さを確認しない_ ため **本質的に危険** であり、プログラム中に `gets()` があれば、**必ず** 調べるべきポイントです。`fgets()` に誤ったパラメータを渡して、_それでも_ 多すぎる文字を読み込んでしまうことも **可能** です。
 {% endhint %}
 
 ## Summary
 
-When a function calls another function, it
+ある関数が別の関数を呼ぶとき、次のことが行われます。
 
-* pushes a **return pointer** to the stack so the called function knows where to return
-* when the called function finishes execution, it pops it off the stack again
+* **リターンポインタ(return pointer)** をスタックに push し、呼び出された関数が戻り先を分かるようにする
+* 呼び出された関数の実行が終わると、それをスタックからふたたび pop する
 
-Because this value is saved on the stack, just like our local variables, if we write _more_ characters than the program expects, we can overwrite the value and redirect code execution to wherever we wish. Functions such as `fgets()` can prevent such easy overflow, but you should check how much is actually being read.
+この値はローカル変数と同じようにスタックに保存されているため、プログラムが想定するより _多くの_ 文字を書き込めば、この値を上書きして、コードの実行を任意の場所へ向けられます。`fgets()` のような関数を使えばこうした単純なオーバーフローは防げますが、実際にどれだけ読み込まれているかは確認すべきです。

@@ -4,14 +4,14 @@ description: Supervisor Memory Execute Protection
 
 # SMEP
 
-If [ret2usr ](../../../types/kernel/kernel-rop-ret2usr.md)is analogous to ret2shellcode, then SMEP is the new [NX](../../stack/no-execute.md). SMEP is a primitive protection that ensures [any code executed in kernel mode is located in kernel space](https://wiki.osdev.org/Supervisor_Memory_Protection), and it does this based on the User/Supervisor bit in page tables. This means a simple ROP back to our own shellcode no longer works. To bypass SMEP, we have to use gadgets located in the kernel to achieve what we want to (without switching to userland code).
+[ret2usr ](../../../types/kernel/kernel-rop-ret2usr.md)が ret2shellcode に相当するなら、SMEP は新しい [NX](../../stack/no-execute.md) です。SMEP は原始的な保護機構で、[カーネルモードで実行されるコードがすべてカーネル空間にあること](https://wiki.osdev.org/Supervisor_Memory_Protection)を保証します。これはページテーブルの User/Supervisor ビットに基づいて行われます。つまり、自分のシェルコードに単純に ROP で戻る方法はもう通用しません。SMEP を回避するには、(ユーザーランドのコードに切り替えずに)カーネル内にあるガジェットを使って目的を達成する必要があります。
 
-In older kernel versions we could [use ROP to disable SMEP entirely](kernel-rop-disabling-smep.md), but this has been patched out. This was possible because SMEP is determined by the [20th bit of the CR4 register](https://wiki.osdev.org/CPU_Registers_x86#CR4), meaning that if we can control CR4 we can disable SMEP from messing with our exploit.
+古いカーネルバージョンでは、[ROP で SMEP を完全に無効化](kernel-rop-disabling-smep.md)できましたが、これはパッチで塞がれました。これが可能だったのは、SMEP が [CR4 レジスタの 20 ビット目](https://wiki.osdev.org/CPU_Registers_x86#CR4)で決まるためで、CR4 を制御できれば、SMEP がエクスプロイトの邪魔をしないよう無効化できたのです。
 
-We can enable SMEP in the kernel by controlling the respective QEMU flag (`qemu64` is not notable):
+対応する QEMU のフラグを制御することで、カーネルで SMEP を有効にできます(`qemu64` に特に意味はありません)。
 
 ```
     -cpu qemu64,+smep
 ```
 
-Sometimes it will be enabled by default, in which case you need to us `nosmep`.
+既定で有効になっていることもあり、その場合は `nosmep` を使う必要があります。

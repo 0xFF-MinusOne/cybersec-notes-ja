@@ -1,26 +1,26 @@
 ---
-description: More reliable shellcode exploits
+description: より確実なシェルコードエクスプロイト
 ---
 
 # NOPs
 
-NOP \(no operation\) instructions do exactly what they sound like: _nothing_. Which makes then very useful for shellcode exploits, because all they will do is run the next instruction. If we pad our exploits on the left with NOPs and point EIP at the middle of them, it'll simply keep doing no instructions until it reaches our actual shellcode. This allows us a greater margin of error as a shift of a few bytes forward or backwards won't really affect it, it'll just run a different number of NOP instructions - which have the same end result of running the shellcode. This padding with NOPs is often called a NOP slide or NOP sled, since the EIP is essentially sliding down them.
+NOP(no operation)命令は、その名のとおり _何もしません_。そのため、次の命令を実行するだけの NOP は、シェルコードを使うエクスプロイトでとても役に立ちます。エクスプロイトの左側を NOP で埋め、EIP をその真ん中あたりに向ければ、実際のシェルコードに到達するまで何もしない命令を実行し続けます。こうすると、数バイト前後にずれても、実行される NOP 命令の数が変わるだけで、最終的にシェルコードが実行される結果は同じなので、誤差の許容範囲が広がります。この NOP による埋め込みは、EIP が NOP の上を滑り降りていくように見えることから、NOP スライド(NOP slide)または NOP sled と呼ばれます。
 
-In intel x86 assembly, NOP instructions are `\x90`.
+Intel x86 アセンブリでは、NOP 命令は `\x90` です。
 
 {% hint style="info" %}
-The NOP instruction actually used to stand for `XCHG EAX, EAX`, which does effectively nothing. You can read a bit more about it [on this StackOverflow question](https://stackoverflow.com/questions/25008772/whats-the-difference-between-the-x86-nop-and-fnop-instructions/25053039).
+NOP 命令はもともと `XCHG EAX, EAX` を指しており、これは事実上何もしません。詳しくは[この StackOverflow の質問](https://stackoverflow.com/questions/25008772/whats-the-difference-between-the-x86-nop-and-fnop-instructions/25053039)を参照してください。
 {% endhint %}
 
 ### Updating our Shellcode Exploit
 
-We can make slight changes to our exploit to do two things:
+エクスプロイトに少し手を加えて、次の2つを行います。
 
-* Add a large number of NOPs on the left
-* Adjust our return pointer to point at the middle of the NOPs rather than the buffer start
+* 左側に大量の NOP を追加する
+* リターンポインタを、バッファの先頭ではなく NOP の真ん中を指すように調整する
 
 {% hint style="warning" %}
-Make sure ASLR is still disabled. If you have to disable it again, you may have to readjust your previous exploit as the buffer location my be different.
+ASLR が引き続き無効になっていることを確認してください。もう一度無効にする必要があった場合は、バッファの位置が変わっている可能性があるため、以前のエクスプロイトを調整し直す必要があるかもしれません。
 {% endhint %}
 
 ```python
@@ -43,12 +43,11 @@ p.interactive()
 ```
 
 {% hint style="warning" %}
-It's probably worth mentioning that shellcode with NOPs is not failsafe; if you receive unexpected errors padding with NOPs but the shellcode worked before, try reducing the length of the nopsled as it may be tampering with other things on the stack
+NOP を使ったシェルコードが確実とは限らない点には触れておくべきでしょう。NOP で埋めたら予期しないエラーが出て、以前はシェルコードが動いていたのであれば、nopsled が短くなるよう試してみてください。スタック上のほかのものを壊している可能性があります。
 {% endhint %}
 
-Note that NOPs are only `\x90` in certain architectures, and if you need others you can use pwntools:
+NOP が `\x90` になるのは特定のアーキテクチャだけです。ほかのアーキテクチャが必要な場合は pwntools を使えます。
 
 ```python
 nop = asm(shellcraft.nop())
 ```
-

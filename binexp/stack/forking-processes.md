@@ -1,16 +1,16 @@
 ---
-description: Flaws with fork()
+description: fork() の欠陥
 ---
 
-# Forking Processes
+# フォークするプロセス(Forking Processes)
 
-Some processes use `fork()` to deal with multiple requests at once, most notably servers.
+プロセスの中には、複数のリクエストを同時に処理するために `fork()` を使うものがあり、代表的なのはサーバーです。
 
-An interesting side-effect of `fork()` is that memory is copied **exactly**. This means everything is identical - ELF base, libc base, **canaries**.
+`fork()` の興味深い副作用は、メモリが**そっくり**コピーされることです。つまり、ELF のベース、libc のベース、**カナリア**など、すべてが同一になります。
 
-This "shared" memory is interesting from an attacking point of view as it allows us to do a **byte-by-byte bruteforce**. Simply put, if there is a response from the server when we send a message, we can work out when it crashed. We keep spamming bytes until there's a response. If the server crashes, the byte is wrong. If not, it's correct.
+この「共有」されたメモリは、攻撃者の視点では**バイト単位のブルートフォース**を可能にするため興味深いものです。簡単に言えば、メッセージを送ったときにサーバーから応答があれば、いつクラッシュしたかがわかります。応答が返るまでバイトを送り続け、サーバーがクラッシュすればそのバイトは間違いで、クラッシュしなければ正しいということです。
 
-This allows us to bruteforce the RIP one byte at a time, essentially leaking PIE - and the same thing for canaries and RBP. 24 bytes of multithreaded bruteforce, and once you leak all of those you can bypass a canary, get a stack leak from RBP and PIE base from RIP.
+これにより、RIP を 1 バイトずつブルートフォースでき、実質的に PIE をリークできます。カナリアや RBP についても同じです。24 バイトをマルチスレッドでブルートフォースし、すべてリークできれば、カナリアをバイパスし、RBP からスタックのリークを、RIP から PIE のベースを得られます。
 
-I won't be making a binary for this \(yet\), but you can check out [ippsec's Rope writeup](https://www.youtube.com/watch?v=GTQxZlr5yvE) for HTB - Rope root was this exact technique.
+これについてのバイナリは(まだ)作りませんが、HTB の [ippsec による Rope の writeup](https://www.youtube.com/watch?v=GTQxZlr5yvE) を見てみてください。Rope の root はまさにこの手法でした。
 

@@ -1,30 +1,30 @@
 ---
-description: The pain of it all
+description: 面倒なことばかり
 ---
 
 # Kernel Heap
 
-Historically, the Linux kernel has had three main heap allocators: SLOB, SLAB and SLUB.
+歴史的に、Linux カーネルには主なヒープアロケータが 3 つありました。SLOB、SLAB、SLUB です。
 
-SLUB is the latest version, replacing SLAB as of [version 2.6.23](https://archive.ph/20130415043346/http://git.kernel.org/?p=linux/kernel/git/torvalds/linux-2.6.git;a=commit;h=a0acd820807680d2ccc4ef3448387fcdbf152c73). SLOB was used as the backup to SLAB and SLUB, but was removed in [version 6.4](https://lwn.net/Articles/936132/). As a result, SLUB is all we really have to care about (even pre-6.4, SLOB was practically never used). **From here on out, we will only talk about SLUB, unless explicitly stated**.
+SLUB は最新版で、[バージョン 2.6.23](https://archive.ph/20130415043346/http://git.kernel.org/?p=linux/kernel/git/torvalds/linux-2.6.git;a=commit;h=a0acd820807680d2ccc4ef3448387fcdbf152c73) から SLAB に代わって使われています。SLOB は SLAB と SLUB の代替として使われていましたが、[バージョン 6.4](https://lwn.net/Articles/936132/) で削除されました。そのため、実際に気にする必要があるのは SLUB だけです(6.4 より前でも、SLOB はほとんど使われていませんでした)。**これ以降は、明示しない限り SLUB だけを扱います**。
 
-Note that, confusingly, "chunks" in the kernel heap are called _objects_ and they are stored in _slabs_.
+ややこしいことに、カーネルヒープでは「チャンク」を _オブジェクト(object)_ と呼び、それらは _スラブ(slab)_ に格納されます。
 
 ## Slabs and Caches
 
-Unlike the glibc heap, SLUB has fixed sizes for objects, which are powers of 2 up to **8192** along with **96** and **192**. These are conveniently called `kmalloc-8`, `kmalloc-16`, `kmalloc-32` <sub>,</sub> `kmalloc-64`, `kmalloc-96`, `kmalloc-128`, `kmalloc-192`, `kmalloc-256`, `kmalloc-512`, `kmalloc-1k`, `kmalloc-2k`, `kmalloc-4k` and `kmalloc-8k`. We call these individual classifications **caches**, and they are comprised of **slabs**.
+glibc のヒープと違い、SLUB のオブジェクトサイズは固定で、**8192** までの 2 のべき乗に加えて **96** と **192** があります。これらは分かりやすく `kmalloc-8`、`kmalloc-16`、`kmalloc-32` <sub>,</sub> `kmalloc-64`、`kmalloc-96`、`kmalloc-128`、`kmalloc-192`、`kmalloc-256`、`kmalloc-512`、`kmalloc-1k`、`kmalloc-2k`、`kmalloc-4k`、`kmalloc-8k` と呼ばれます。これらの個々の区分を **キャッシュ(cache)** と呼び、キャッシュは **スラブ** で構成されています。
 
-Each **slab** is assigned its own area of memory and comprised of 1 or more continuous pages. If the kernel wants to allocate space in the heap, it will call `kmalloc`  and pass it the size (and some flags). The size will be rounded up to fit in the smallest possible cache, then assigned there. Anything larger than 8192 bytes will not use `kmalloc` at all, and uses `page_alloc` instead.
+各 **スラブ** には専用のメモリ領域が割り当てられ、連続した 1 ページ以上で構成されます。カーネルがヒープに領域を確保したいときは、`kmalloc` にサイズ(といくつかのフラグ)を渡して呼び出します。サイズは収まる最小のキャッシュに切り上げられ、そこに割り当てられます。8192 バイトより大きいものは `kmalloc` をまったく使わず、代わりに `page_alloc` を使います。
 
-This approach is a **massive** performance improvement. It can also make exploitation primitives harder, as every object is the same size and it's harder to overlap. Similarly, because the sizes are determined by the cache rather than metadata, we cannot fake size.
+この方式は性能を **大幅に** 向上させます。一方で、すべてのオブジェクトが同じサイズで重ねにくいため、攻略のプリミティブは作りにくくなることもあります。同様に、サイズはメタデータではなくキャッシュによって決まるため、サイズを偽装することもできません。
 
 ### Slab Creation
 
-We can get to a point where we have so many objects in a cache that they fill all of the slabs. In this case, a new slab is created. This slab does not create the singular object - it will create **multiple** objects. Why? Because the kernel knows that this slab is **only** used for `kmalloc-1k` objects, it creates all possible objects immediately and marks the remaining as free.
+キャッシュ内のオブジェクトが増えて、すべてのスラブが埋まってしまうことがあります。その場合は、新しいスラブが作られます。このスラブは、オブジェクトを 1 つだけ作るのではなく、**複数** 作ります。なぜでしょうか。カーネルは、このスラブが `kmalloc-1k` のオブジェクトにしか **使われない** と分かっているので、作れるオブジェクトをすべて一度に作り、残りを未使用としてマークするからです。
 
-These remaining three are saved in the freelist in a **random order**, provided that the configuration  `CONFIG_SLAB_FREELIST_RANDOM` is enabled (which it is by default).
+これら残りの 3 つは、`CONFIG_SLAB_FREELIST_RANDOM` が有効なら(既定で有効です)、**ランダムな順序** で free list に保存されます。
 
-The default size of slabs depends on the cache it is being used for. You can read `/proc/slabinfo` to see the current configuration for the system:
+スラブの既定のサイズは、使われるキャッシュによって異なります。`/proc/slabinfo` を読むと、システムの現在の構成を確認できます。
 
 ```
 $ sudo cat /proc/slabinfo
@@ -45,12 +45,12 @@ kmalloc-192         3885          3885         192         21            1
 kmalloc-96          3506          4158          96         42            1
 ```
 
-Here `objsize` is the size of each element in the cache, and `objsperslab` is the number of objects created at once when a new slab is initialized. Then `pagesperslab` is the product of `objsize/0x1000` (pages per object) and `objperslab`, and tells you how many pages each slab has.
+ここで `objsize` はキャッシュ内の各要素のサイズ、`objsperslab` は新しいスラブの初期化時に一度に作られるオブジェクトの数です。`pagesperslab` は、`objsize/0x1000`(オブジェクト 1 つあたりのページ数)と `objperslab` の積で、各スラブが何ページあるかを表します。
 
 TODO `CONFIG_SLAB_FREELIST_HARDENED`.
 
 ## The Kernel Heap is Global
 
-One major difference between user- and kernel-mode heap exploitation is that the kernel heap is shared between **all kernel processes**. Kernel modules and every other aspect of the kernel _use the same heap_.
+ユーザーモードとカーネルモードのヒープ攻略の大きな違いの 1 つは、カーネルヒープが **すべてのカーネルプロセス** で共有されていることです。カーネルモジュールもカーネルのあらゆる部分も、_同じヒープを使います_。
 
-So, let's say you find some sort of kernel heap primitive - an overflow, for example. Overflowing into identical objects might not be helpful, but in the kernel, we can find common structs with powerful primitives that we can use to our advantage. Imagine that there is a struct that contains a function pointer, and you can trigger a call to this function. If this struct is allocated to the same cache as the object you can overflow, it is possible to allocate this struct such that it inhabits the object located directly behind in memory. Suddenly the overflow is incredibly powerful, and can lead immediately to something like a ret2usr.
+例えば、オーバーフローのようなカーネルヒープのプリミティブを見つけたとします。同じようなオブジェクトにオーバーフローしても役に立たないかもしれませんが、カーネルでは、強力なプリミティブを持つ一般的な構造体を見つけて、有利に使うことができます。関数ポインタを含む構造体があり、その関数の呼び出しを引き起こせるとしましょう。この構造体が、オーバーフローできるオブジェクトと同じキャッシュに確保されるなら、メモリ上のすぐ後ろにあるオブジェクトの場所に、この構造体を確保させることができます。すると、オーバーフローは突然非常に強力になり、ret2usr のようなものにすぐにつなげられます。

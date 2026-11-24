@@ -4,9 +4,9 @@ description: Bypassing NX
 
 # Return-Oriented Programming
 
-The basis of ROP is chaining together small chunks of code already present within the binary itself in such a way to do what you wish. This often involves passing parameters to functions already present within `libc`, such as `system` - if you can find the location of a command, such as `cat flag.txt`, and then pass it _as a parameter_ to `system`, it will execute that command and return the output. A more dangerous command is `/bin/sh`, which when run by `system` gives the attacker a shell much like the shellcode we used did.
+ROP の基本は、バイナリ自身の中にすでにある小さなコードの断片を連鎖させて、目的の動作をさせることです。多くの場合、`libc` にすでにある `system` などの関数にパラメータを渡すことになります。`cat flag.txt` のようなコマンドの場所を見つけて、それを `system` に_パラメータとして_渡せば、そのコマンドが実行され、出力が返ってきます。より危険なコマンドは `/bin/sh` で、`system` に実行させると、先ほど使ったシェルコードと同じように、攻撃者はシェルを得られます。
 
-Doing this, however, is not as simple as it may seem at first. To be able to properly call functions, we first have to understand how to pass parameters to them.
+ただし、これは一見したほど単純ではありません。関数を正しく呼び出すには、まずパラメータの渡し方を理解する必要があります。
 
 #### 
 

@@ -1,7 +1,7 @@
 ---
-description: Reintroducing double-frees
+description: double free の再登場
 ---
 
 # Tcache Poisoning
 
-Tcache poisoning is a fancy name for a double-free in the tcache chunks.
+Tcache poisoning は、tcache のチャンクにおける double free の仰々しい呼び方です。

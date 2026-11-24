@@ -4,9 +4,9 @@ description: http://exploit.education/phoenix/heap-zero/
 
 # heap0
 
-## Source
+## ソースコード
 
-Luckily it gives us the source:
+幸い、ソースコードが与えられています。
 
 ```c
 #include <err.h>
@@ -58,20 +58,20 @@ int main(int argc, char **argv) {
 }
 ```
 
-## Analysis
+## 解析
 
-So let's analyse what it does:
+では、何をしているのかを解析しましょう。
 
-* Allocates two chunks on the heap
-* Sets the `fp` variable of chunk `f` to the address of `nowinner`
-* Copies the first command-line argument to the `name` variable of the chunk `d`
-* Runs whatever the `fp` variable of `f` points at
+* ヒープ上に 2 つのチャンクを確保する
+* チャンク `f` の `fp` 変数に `nowinner` のアドレスを設定する
+* 最初のコマンドライン引数をチャンク `d` の `name` 変数にコピーする
+* `f` の `fp` 変数が指しているものを実行する
 
-The weakness here is clear - it runs a random address on the heap. Our input is copied there after the value is set and there's no bound checking whatsoever, so we can overrun it easily.
+弱点は明らかです。ヒープ上の任意のアドレスを実行してしまいます。値が設定された後に入力がコピーされ、しかも境界チェックがまったくないため、簡単に溢れさせることができます。
 
-### Regular Execution
+### 通常の実行
 
-Let's check out the heap in normal conditions.
+まずは通常の状態でヒープを確認しましょう。
 
 ```
 $ r2 -d -A heap0 AAAAAAAAAAAA            <== that's just a parameter
@@ -82,7 +82,7 @@ $ s main; pdf
 [...]
 ```
 
-We'll break right after the strcpy and see how it looks.
+strcpy の直後にブレークして、どうなっているか見てみます。
 
 ```
 [0x004006f8]> db 0x00400762
@@ -90,19 +90,19 @@ We'll break right after the strcpy and see how it looks.
 hit breakpoint at: 0x400762
 ```
 
-![The Expected Two Chunks](<../../../.gitbook/assets/image (5).png>)
+![想定どおりの 2 つのチャンク](<../../../.gitbook/assets/image (5).png>)
 
-If we want, we can check the contents.
+必要なら、内容も確認できます。
 
-![Chunk with our input](<../../../.gitbook/assets/image (2) (1) (1).png>)
+![入力が入ったチャンク](<../../../.gitbook/assets/image (2) (1) (1).png>)
 
-![The Chunk with the Function Address](<../../../.gitbook/assets/image (3).png>)
+![関数のアドレスが入ったチャンク](<../../../.gitbook/assets/image (3).png>)
 
-So, we can see that the function address is there, after our input in memory. Let's work out the offset.
+このように、メモリ上では入力の後ろに関数のアドレスがあることが分かります。オフセットを求めましょう。
 
-### Working out the Offset
+### オフセットを求める
 
-Since we want to work out how many characters we need until the pointer, I'll just use a [De Bruijn Sequence](../../stack/de-bruijn-sequences.md).
+ポインタに届くまでに何文字必要かを知りたいので、ここでは [De Bruijn シーケンス](../../stack/de-bruijn-sequences.md)(De Bruijn Sequence)を使います。
 
 ```
 $ ragg2 -P 200 -r
@@ -112,7 +112,7 @@ $ ragg2 -P 200 -r
 $ r2 -d -A heap0 AAABAACAADAAE...
 ```
 
-Let's break **on** and **after** the `strcpy`. That way we can check the location of the pointer then immediately read it and calculate the offset.
+`strcpy` の**直前**と**直後**でブレークします。こうすると、ポインタの位置を確認してから、すぐにその値を読み取ってオフセットを計算できます。
 
 ```
 [0x004006f8]> db 0x0040075d
@@ -121,31 +121,31 @@ Let's break **on** and **after** the `strcpy`. That way we can check the locatio
 hit breakpoint at: 0x40075d
 ```
 
-![The chunk before the strcpy](<../../../.gitbook/assets/image (2) (1).png>)
+![strcpy の前のチャンク](<../../../.gitbook/assets/image (2) (1).png>)
 
-So, the chunk with the pointer is located at `0x2493060`. Let's continue until the next breakpoint.
+ポインタを持つチャンクは `0x2493060` にあります。次のブレークポイントまで進めましょう。
 
 ```
 [0x0040075d]> dc
 hit breakpoint at: 0x400762
 ```
 
-![Corrupted](<../../../.gitbook/assets/image (1) (1).png>)
+![破壊された状態](<../../../.gitbook/assets/image (1) (1).png>)
 
-radare2 is nice enough to tell us we corrupted the data. Let's analyse the chunk again.
+radare2 は親切にも、データを破壊したことを教えてくれます。もう一度チャンクを解析しましょう。
 
 ![](<../../../.gitbook/assets/image (4).png>)
 
-Notice we overwrote the `size` field, so the chunk is much bigger. But now we can easily use the first value to work out the offset (we could also, knowing the location, have done `pxq @ 0x02493060`).
+`size` フィールドを上書きしたため、チャンクがはるかに大きくなっていることに注目してください。ただ、先頭の値を使えばオフセットを簡単に求められます(場所が分かっているので、`pxq @ 0x02493060` を使うこともできました)。
 
 ```
 [0x00400762]> wopO 0x6441416341416241
 80
 ```
 
-So, fairly simple - 80 characters, then the address of `winner`.
+というわけで、とても単純です。80 文字の後に `winner` のアドレスを置きます。
 
-## Exploit
+## エクスプロイト
 
 ```python
 from pwn import *
@@ -160,5 +160,5 @@ print(p.clean().decode('latin-1'))
 ```
 
 {% hint style="info" %}
-We need to remove the null bytes because `argv` doesn't allow them
+`argv` にはヌルバイトを含められないため、取り除く必要があります
 {% endhint %}

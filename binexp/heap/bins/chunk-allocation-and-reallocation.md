@@ -1,17 +1,17 @@
-# Operations of the Other Bins
+# その他の bin の動作
 
-When a non-fast chunk is freed, it gets put into the Unsorted Bin. When new chunks are **requested**, glibc looks at all of the bins
+fastbin サイズではないチャンクを解放すると、そのチャンクは Unsorted Bin に入ります。新しくチャンクが**要求**されると、glibc はすべての bin を調べます。
 
-* If the requested size is fastbin size, [check the corresponding fastbin](https://elixir.bootlin.com/glibc/glibc-2.3.6/source/malloc/malloc.c#L3849)
-  * If there is a chunk in it, return it
-* If the requested chunk is of smallbin size, [check the corresponding smallbin](https://elixir.bootlin.com/glibc/glibc-2.3.6/source/malloc/malloc.c#L3868)
-  * If there is a chunk in it, return it
-* If the requested chunk is large (of largebin size), [we first consolidate the largebins](https://elixir.bootlin.com/glibc/glibc-2.3.6/source/malloc/malloc.c#L3897) with [`malloc_consolidate()`](../malloc_consolidate.md). We will get into the mechanisms of this at a later point, but essentially I lied earlier - fastbins **do** consolidate, but not on freeing!
-* Finally, we iterate through the chunks in the unsorted bin
-  * If it is empty, we service the request through making the heap larger by [splitting the top chunk](../the-top-chunk-and-remainder.md), pushing the now-smaller top chunk to start at a higher memory address
-* If the requested size is equal to the size of the chunk in the bin, return the chunk
-* If it's smaller, split the chunk in the bin in two and return a portion of the correct size
-* If it's larger, we [consolidate the fastbins](https://elixir.bootlin.com/glibc/glibc-2.3.6/source/malloc/malloc.c#L3897), and after this there may be free chunks big enough to service the request
-  * If not, we again service the request by [splitting the top chunk](../the-top-chunk-and-remainder.md) and pushing the now-smaller top chunk to start at a higher memory address
+* 要求サイズが fastbin サイズであれば、[対応する fastbin を確認します](https://elixir.bootlin.com/glibc/glibc-2.3.6/source/malloc/malloc.c#L3849)
+  * チャンクがあれば、それを返します
+* 要求サイズが small bin サイズであれば、[対応する small bin を確認します](https://elixir.bootlin.com/glibc/glibc-2.3.6/source/malloc/malloc.c#L3868)
+  * チャンクがあれば、それを返します
+* 要求されたチャンクが大きい(largebin サイズ)場合は、まず [`malloc_consolidate()`](../malloc_consolidate.md) で [largebin を統合(consolidate)します](https://elixir.bootlin.com/glibc/glibc-2.3.6/source/malloc/malloc.c#L3897)。この仕組みは後で詳しく扱いますが、要するに先ほどの説明は嘘でした。fastbin も統合**される**のです。ただし、解放時ではありません。
+* 最後に、unsorted bin 内のチャンクを順にたどります
+  * unsorted bin が空であれば、[top chunk を分割して](../the-top-chunk-and-remainder.md)ヒープを拡張することで要求に応えます。このとき、小さくなった top chunk はより高いメモリアドレスから始まる形になります
+* 要求サイズが bin 内のチャンクのサイズと等しければ、そのチャンクを返します
+* 小さければ、bin 内のチャンクを 2 つに分割し、適切なサイズの部分を返します
+* 大きければ、[fastbin を統合します](https://elixir.bootlin.com/glibc/glibc-2.3.6/source/malloc/malloc.c#L3897)。その結果、要求を満たせるだけの大きさの解放済みチャンクができているかもしれません
+  * できていなければ、あらためて [top chunk を分割して](../the-top-chunk-and-remainder.md)要求に応え、小さくなった top chunk をより高いメモリアドレスから始まる形にします
 
-One thing that is very easy to forget is what happens on _allocation_ and what happens on _freeing_, as it can be a bit counter-intuitive. For example, the fastbin consolidation is triggered from an allocation!
+忘れやすく、少し直感に反するのが、_確保_ 時に起きることと _解放_ 時に起きることの違いです。たとえば、fastbin の統合は確保をきっかけに起こります。

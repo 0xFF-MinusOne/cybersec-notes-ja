@@ -1,22 +1,22 @@
 # Introduction
 
-The kernel is the program at the heart of the Operating System. It is responsible for controlling every aspect of the computer, from the nature of syscalls to the integration between software and hardware. As such, exploiting the kernel can lead to some incredibly dangerous bugs.
+カーネル(kernel)は、オペレーティングシステムの中心にあるプログラムです。システムコールの性質から、ソフトウェアとハードウェアの統合まで、コンピュータのあらゆる側面を制御する役割を担っています。そのため、カーネルの攻略は非常に危険なバグにつながることがあります。
 
-In the context of CTFs, Linux kernel exploitation often involves the exploitation of kernel **modules**. This is an integral feature of Linux that allows users to extend the kernel with their own code, adding additional features.
+CTF では、Linux カーネルの攻略はカーネル **モジュール** の攻略であることが多いです。モジュールは Linux の重要な機能で、ユーザーが自分のコードでカーネルを拡張し、機能を追加できます。
 
-You can find an excellent introduction to Kernel Drivers and Modules by LiveOverflow [here](https://www.youtube.com/watch?v=juGNPLdjLH4), and I recommend it highly.
+LiveOverflow による、カーネルドライバとモジュールの優れた入門動画が[こちら](https://www.youtube.com/watch?v=juGNPLdjLH4)にあります。強くおすすめします。
 
 ### Kernel Modules
 
-Kernel Modules are written in C and compiled to a `.ko` \(**K**ernel **O**bject\) format. Most kernel modules are compiled for a specific version kernel version \(which can be checked with `uname -r`, my Xenial Xerus is `4.15.0-128-generic`\). We can load and unload these modules using the `insmod` and `rmmod` commands respectively. Kernel modules are often loaded into `/dev/*` or `/proc/`. There are 3 main module types: **Char**, **Block** and **Network**.
+カーネルモジュールは C で書かれ、`.ko` \(**K**ernel **O**bject\) 形式にコンパイルされます。ほとんどのカーネルモジュールは特定のカーネルバージョン向けにコンパイルされます \(バージョンは `uname -r` で確認できます。私の Xenial Xerus では `4.15.0-128-generic` です\)。これらのモジュールの読み込みと取り外しには、それぞれ `insmod` と `rmmod` コマンドを使います。カーネルモジュールは `/dev/*` や `/proc/` に置かれることがよくあります。主なモジュールの種類は 3 つあります。**Char**、**Block**、**Network** です。
 
 #### Char Modules
 
-_Char_ Modules are deceptively simple. Essentially, you can access them as a **stream of bytes** - just like a file - using syscalls such as `open`. In this way, they're virtually almost dynamic files \(at a super basic level\), as the values read and written can be changed.
+_Char_ モジュールは、見かけによらず単純です。基本的には、ファイルと同じように `open` などのシステムコールを使って、**バイトのストリーム** としてアクセスできます。読み書きされる値を変えられるので、\(ごく基本的なレベルでは\) ほとんど動的なファイルのようなものです。
 
-Examples of Char modules include `/dev/random`.
+Char モジュールの例には `/dev/random` があります。
 
 {% hint style="info" %}
-I'll be using the term _module_ and _device_ interchangeably. As far as I can tell, they are the same, but please let me know if I'm wrong!
+_モジュール_ と _デバイス_ という言葉を、区別せずに使います。私が理解している限りでは同じものですが、間違っていたら教えてください。
 {% endhint %}
 

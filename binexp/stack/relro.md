@@ -4,13 +4,12 @@ description: Relocation Read-Only
 
 # RELRO
 
-RELRO is a protection to stop any GOT overwrites from taking place, and it does so very effectively. There are two types of RELRO, which are both easy to understand.
+RELRO は GOT の上書きを防ぐための保護で、非常に効果的です。RELRO には2つの種類があり、どちらも理解しやすいものです。
 
 #### Partial RELRO
 
-Partial RELRO simply moves the GOT above the program's variables, meaning you can't overflow **into** the GOT. This, of course, does not prevent format string overwrites.
+Partial RELRO は、GOT をプログラムの変数よりも上の位置に移すだけです。つまり、GOT の **中へ** オーバーフローさせることはできません。もちろん、フォーマット文字列による上書きは防げません。
 
 #### Full RELRO
 
-Full RELRO makes the GOT completely read-only, so even format string exploits cannot overwrite it. This is **not** the default in binaries due to the fact that it can make it take **much** longer to load as it need to resolve all the function addresses at once.
-
+Full RELRO は GOT を完全に読み取り専用にするため、フォーマット文字列を使ったエクスプロイトでも上書きできません。バイナリのデフォルトでは **ない** のは、すべての関数のアドレスを一度に解決する必要があるため、ロードに **はるかに** 長い時間がかかる可能性があるからです。

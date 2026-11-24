@@ -4,27 +4,27 @@ description: The standard ROP exploit
 
 # ret2libc/ret2system
 
-A ret2libc, also known as a ret2system, is based off the `system` function found within the C library. This function executes anything passed to it making it the best target. Another thing found within libc is the string `/bin/sh`; if you pass this string to `system`, it will pop a shell.
+ret2libc(ret2system とも呼ばれます)は、C ライブラリにある `system` 関数を利用するものです。この関数は渡されたものを何でも実行するため、最高の標的になります。libc にはもう 1 つ、文字列 `/bin/sh` も含まれています。この文字列を `system` に渡せば、シェルが起動します。
 
-And that is the entire basis of it - passing `/bin/sh` as a parameter to `system`. Doesn't sound too bad, right?
+基本はこれだけで、`/bin/sh` を `system` のパラメータとして渡すのです。それほど難しくなさそうですよね。
 
 {% file src="../../../.gitbook/assets/ret2libc (1).zip" %}
 ret2libc
 {% endfile %}
 
-## Disabling ASLR
+## ASLR を無効にする
 
-To start with, we are going to disable ASLR. ASLR randomises the location of libc in memory, meaning we cannot (without other steps) work out the location of `system` and `/bin/sh`. To understand the general theory, we will start with it disabled.
+まず、ASLR を無効にします。ASLR は libc のメモリ上の位置をランダム化するため、(他の手順なしには)`system` や `/bin/sh` の位置を求められません。全体の理論を理解するために、まずは無効にして始めます。
 
 ```
 echo 0 | sudo tee /proc/sys/kernel/randomize_va_space
 ```
 
-## Manual Exploitation
+## 手動でのエクスプロイト
 
-### Getting Libc and its base
+### libc とそのベースアドレスを取得する
 
-Fortunately Linux has a command called `ldd` for dynamic linking. If we run it on our compiled ELF file, it'll tell us the libraries it uses and their base addresses.
+幸い、Linux には動的リンク用の `ldd` というコマンドがあります。コンパイルした ELF ファイルに対して実行すると、使っているライブラリとそのベースアドレスが分かります。
 
 ```
 $ ldd vuln-32 
@@ -33,15 +33,15 @@ $ ldd vuln-32
 	/lib/ld-linux.so.2 (0xf7fd3000)
 ```
 
-We need `libc.so.6`, so the base address of libc is `0xf7dc2000`.
+必要なのは `libc.so.6` なので、libc のベースアドレスは `0xf7dc2000` です。
 
 {% hint style="info" %}
-Libc base and the system and /bin/sh offsets may be different for you. This isn't a problem - it just means you have a different libc version. Make sure you use **your** values.
+libc のベースアドレスや system、/bin/sh のオフセットは、環境によって異なる場合があります。それは問題ではありません。libc のバージョンが違うだけです。必ず**自分の**値を使ってください。
 {% endhint %}
 
-### Getting the location of system()
+### system() の位置を取得する
 
-To call system, we obviously need its location in memory. We can use the `readelf` command for this.
+system を呼び出すには、当然そのメモリ上の位置が必要です。これには `readelf` コマンドが使えます。
 
 ```
 $ readelf -s /lib32/libc.so.6 | grep system
@@ -49,20 +49,20 @@ $ readelf -s /lib32/libc.so.6 | grep system
 1534: 00044f00    55 FUNC    WEAK   DEFAULT   14 system@@GLIBC_2.0
 ```
 
-The `-s` flag tells `readelf` to search for symbols, for example functions. Here we can find the offset of system from libc base is `0x44f00`.
+`-s` フラグは、`readelf` に関数などのシンボルを探させます。ここから、libc のベースから system までのオフセットは `0x44f00` と分かります。
 
-### Getting the location of /bin/sh
+### /bin/sh の位置を取得する
 
-Since `/bin/sh` is just a string, we can use `strings` on the dynamic library we just found with `ldd`. Note that when passing strings as parameters you need to pass a **pointer** to the string, not the hex representation of the string, because that's how C expects it.
+`/bin/sh` はただの文字列なので、`ldd` で見つけた動的ライブラリに対して `strings` が使えます。文字列をパラメータとして渡すときは、C がそう期待しているため、文字列の 16 進表現ではなく、文字列への**ポインタ**を渡す必要があります。
 
 ```
 $ strings -a -t x /lib32/libc.so.6 | grep /bin/sh
 18c32b /bin/sh
 ```
 
-`-a` tells it to scan the entire file; `-t x` tells it to output the offset in hex.
+`-a` はファイル全体をスキャンさせるオプションで、`-t x` はオフセットを 16 進数で出力させるオプションです。
 
-### 32-bit Exploit
+### 32-bit のエクスプロイト
 
 ```python
 from pwn import *
@@ -83,11 +83,11 @@ p.sendline(payload)
 p.interactive()
 ```
 
-### 64-bit Exploit
+### 64-bit のエクスプロイト
 
-Repeat the process with the `libc` linked to the 64-bit exploit (should be called something like `/lib/x86_64-linux-gnu/libc.so.6`).
+64-bit のエクスプロイトにリンクされている `libc`(`/lib/x86_64-linux-gnu/libc.so.6` のような名前のはずです)で、同じ手順を繰り返します。
 
-Note that instead of passing the parameter in after the return pointer, you will have to use a `pop rdi; ret` gadget to put it into the RDI register.
+注意点として、リターンポインタの後ろにパラメータを置く代わりに、`pop rdi; ret` ガジェットを使って RDI レジスタに値を入れる必要があります。
 
 ```
 $ ROPgadget --binary vuln-64 | grep rdi
@@ -118,9 +118,9 @@ p.sendline(payload)
 p.interactive()
 ```
 
-## Automating with Pwntools
+## Pwntools で自動化する
 
-Unsurprisingly, pwntools has a bunch of features that make this much simpler.
+当然ながら、pwntools にはこれをずっと簡単にする機能がたくさんあります。
 
 ```python
 # 32-bit
@@ -145,8 +145,8 @@ p.sendline(payload)
 p.interactive()
 ```
 
-The 64-bit looks essentially the same.
+64-bit でも、ほぼ同じ形になります。
 
 {% hint style="info" %}
-Pwntools can simplify it even more with its ROP capabilities, but I won't showcase them here.
+Pwntools の ROP 機能を使えば、さらに簡略化できますが、ここでは紹介しません。
 {% endhint %}

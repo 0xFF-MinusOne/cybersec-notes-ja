@@ -1,18 +1,18 @@
 ---
-description: Apple's preferred approach to automatic memory management
+description: 自動メモリ管理に対する Apple の好むアプローチ
 ---
 
 # Automatic Reference Counting
 
 ## Overview
 
-If you have read the section on [C++ Smart Pointers](../c++-smart-pointers.md), you actually pretty much understand ARC. In languages such as Swift, where ARC is used as the only memory management tool, effectively every class instance is used as a `shared_ptr`. The official documentation is [here](https://docs.swift.org/swift-book/documentation/the-swift-programming-language/automaticreferencecounting/).
+[C++ Smart Pointers](../c++-smart-pointers.md) のセクションを読んだなら、ARC はほとんど理解できています。Swift のように ARC が唯一のメモリ管理手段として使われる言語では、事実上すべてのクラスインスタンスが `shared_ptr` として扱われます。公式ドキュメントは[こちら](https://docs.swift.org/swift-book/documentation/the-swift-programming-language/automaticreferencecounting/)です。
 
-Officially, every time a class instance is assigned to a property, constant or variable it creates a **strong reference** to the instance. The reference is called "strong" because the instance cannot be deallocated as long as one such reference exists. Every time one of these properties, constants or variables have their references removed, through something like reaching the end of their lifetime or through reassignment, the reference counter of the class instance drops. Once it reaches zero, the instance is deallocated.
+公式の説明では、クラスインスタンスがプロパティ、定数、変数に代入されるたびに、そのインスタンスへの **強い参照(strong reference)** が作られます。この参照が「強い」と呼ばれるのは、そのような参照が 1 つでも存在する限り、インスタンスを解放できないからです。これらのプロパティ、定数、変数が、生存期間の終わりに達したり再代入されたりして参照を失うたびに、クラスインスタンスの参照カウンタは減ります。ゼロになると、インスタンスは解放されます。
 
 ## Drawback: Reference Cycles
 
-One of the downsides of ARC is the idea of **reference cycles** (also called **retain cycles**), where two class instances have strong references to one another. A minimal example is as follows:
+ARC の欠点の 1 つが **循環参照(reference cycle)**(**retain cycle** とも呼ばれます)という問題で、2 つのクラスインスタンスが互いへの強い参照を持つ状態です。最小限の例は次のとおりです。
 
 ```swift
 class A {
@@ -29,16 +29,16 @@ a.b = b
 b.a = a
 ```
 
-Note that here the instance of `A` has two strong references (`a` and `b.a`) while the instance of `B` also has two strong references (`b` and `a.b`).
+ここで、`A` のインスタンスは 2 つの強い参照(`a` と `b.a`)を持ち、`B` のインスタンスも 2 つの強い参照(`b` と `a.b`)を持っていることに注意してください。
 
-If `a` and `b` go out of scope, the strong references to the instances of `A` and `B` will disappear, and the reference count will decrement to `1` for both instances. But `a.b` and `b.a` will still point at the instances of `A` and `B` respectively, so the instances will not be automatically deallocated. Similarly, they will **never** be deallocated, as `a.b` and `b.a` are no longer accessible, even though they still have strong references! This leads to memory leaks, and is one of the main drawbacks of ARC.
+`a` と `b` がスコープを抜けると、`A` と `B` のインスタンスへの強い参照は消え、両方のインスタンスの参照カウントは `1` に減ります。しかし `a.b` と `b.a` はまだそれぞれ `A` と `B` のインスタンスを指しているため、インスタンスは自動的には解放されません。さらに、`a.b` と `b.a` にはもうアクセスできないのに、強い参照が残っているため、解放されることは **決してありません**。これはメモリリークにつながり、ARC の主な欠点の 1 つです。
 
 ## Drawback: Multi-threading
 
-Reference counting can lead to memory-unsafe execution if a program is multi-threaded, as one thread may delete the object as it is being used by another. This issue does not occur in garbage-collected programming languages.
+プログラムがマルチスレッドの場合、あるスレッドが使っているオブジェクトを別のスレッドが削除してしまう可能性があるため、参照カウントはメモリ安全でない実行につながることがあります。この問題は、ガベージコレクションを使うプログラミング言語では起こりません。
 
 ## Uses of ARC
 
-Having a programming language that uses purely ARC is very rare - only Apple's languages, Objective-C and Swift, do this.
+純粋に ARC だけを使うプログラミング言語は非常にまれで、Apple の言語である Objective-C と Swift だけがそうしています。
 
-Python [does count references](https://docs.python.org/3/glossary.html#term-reference-count), but it [also has a garbage collector](https://docs.python.org/3/glossary.html#term-garbage-collection) to detect and break reference cycles. Up until Python 3.13, the [Global Interpreter Lock](https://blog.jetbrains.com/pycharm/2025/07/faster-python-unlocking-the-python-global-interpreter-lock/) (GIL) meant that multi-threading in Python was actually all on one thread, which counteracted the multi-threading race condition. With the removal of the GIL, [some extra work](https://peps.python.org/pep-0703/) was needed to fix this problem.
+Python は[参照を数えます](https://docs.python.org/3/glossary.html#term-reference-count)が、循環参照を検出して断ち切るための[ガベージコレクタも持っています](https://docs.python.org/3/glossary.html#term-garbage-collection)。Python 3.13 までは、[グローバルインタプリタロック(Global Interpreter Lock)](https://blog.jetbrains.com/pycharm/2025/07/faster-python-unlocking-the-python-global-interpreter-lock/)(GIL)のせいで Python のマルチスレッドは実際にはすべて 1 つのスレッドで動いており、これがマルチスレッドのレースコンディションを打ち消していました。GIL の削除に伴い、この問題を解決するために[追加の作業](https://peps.python.org/pep-0703/)が必要になりました。

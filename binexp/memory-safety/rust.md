@@ -1,20 +1,20 @@
 ---
-description: The poster child for memory safety
+description: メモリ安全性の代表格
 ---
 
 # Rust
 
-Rust's memory safety relies on two main principles: **ownership** and **borrowing**.
+Rust のメモリ安全性は、**所有権(ownership)**と**借用(borrowing)**という 2 つの主要な原則に基づいています。
 
-Every value in Rust has an **owner**, meaning that at any given point in the code there is **one** thing that can have read/write control over the value. Ownership can be **borrowed** temporarily, but this is tracked by Rust's **compiler** and the violation of any ownership rules **does not compile**.
+Rust のすべての値には**所有者(owner)**がいます。つまり、コード上のある時点で、その値の読み書きを制御できるのは**ひとつ**だけです。所有権は一時的に**借用**できますが、これは Rust の**コンパイラ**が追跡しており、所有権のルールに違反するコードは**コンパイルできません**。
 
-This is a different approach to other programming languages. As we have seen so far, C has no such concept of memory safety. Higher-level _managed_ languages, such as Python, Java or C#, handle memory-safety in the **runtime**. This compromises speed, as well as the requirement of a runtime.
+これは他のプログラミング言語とは異なるアプローチです。ここまで見てきたとおり、C にはメモリ安全性という概念がありません。Python、Java、C# のような高水準の_マネージド_言語は、メモリ安全性を**ランタイム**で処理します。そのためランタイムが必要になるだけでなく、速度も犠牲になります。
 
-[This article](https://www.infoworld.com/article/2336661/rust-memory-safety-explained.html) has a good explanation, as does [this Stack Overflow](https://stackoverflow.com/questions/36136201/how-does-rust-guarantee-memory-safety-and-prevent-segmentation-faults) post. [The official documentation for this topic](https://doc.rust-lang.org/book/ch04-00-understanding-ownership.html) is also fantastic.
+[この記事](https://www.infoworld.com/article/2336661/rust-memory-safety-explained.html)にわかりやすい解説があり、[この Stack Overflow](https://stackoverflow.com/questions/36136201/how-does-rust-guarantee-memory-safety-and-prevent-segmentation-faults) の投稿も参考になります。[このテーマに関する公式ドキュメント](https://doc.rust-lang.org/book/ch04-00-understanding-ownership.html)も素晴らしい内容です。
 
-### Ownership
+### 所有権(Ownership)
 
-Consider the following code:
+次のコードを考えてみます。
 
 ```rust
 fn main() {
@@ -24,7 +24,7 @@ fn main() {
 }
 ```
 
-While this is valid in many other languages, Rust will throw an error here because the value is **moved**.
+他の多くの言語ではこれは有効ですが、Rust では値が**ムーブ(move)**されるため、ここでエラーになります。
 
 ```
 error[E0382]: borrow of moved value: `original`
@@ -38,19 +38,19 @@ error[E0382]: borrow of moved value: `original`
   |                    ^^^^^^^^ value borrowed here after move
 ```
 
-In the second line, as soon as we define `other`, it becomes **invalid** to use `original` again. This protects against **double-frees**, **use-after-frees** and any other sorts of vulnerabilities that can arise due to dangling pointers.
+2 行目で `other` を定義した時点で、`original` を再び使うことは**無効**になります。これにより、**double free**、**UAF(use after free)**、そのほかダングリングポインタに起因するあらゆる種類の脆弱性を防げます。
 
 {% hint style="info" %}
-Note that the error talks about how the type `String` does not implement [the `Copy` trait](https://doc.rust-lang.org/std/marker/trait.Copy.html). If a type does implement this, then an assignment like the second line here would **duplicate** the variable, copying all of the bits over. This wouldn't cause an issue, as there are two distinct variables owning their respective values. What Rust does not want is two variables refering to **the same data in memory**, which would occur for `String` types as they are just pointers to the actual string in memory.
+エラーメッセージが、`String` 型が [`Copy` トレイト](https://doc.rust-lang.org/std/marker/trait.Copy.html)を実装していないと述べている点に注目してください。ある型がこれを実装している場合、ここでの 2 行目のような代入は、すべてのビットをコピーして変数を**複製**します。この場合は、2 つの別個の変数がそれぞれ別の値を所有することになるので、問題は起きません。Rust が避けたいのは、2 つの変数が**メモリ上の同じデータ**を参照する状態です。`String` 型は実際の文字列へのポインタにすぎないため、複製するとまさにその状態になってしまいます。
 {% endhint %}
 
-### Borrowing
+### 借用(Borrowing)
 
-Instead of copying data or transferring ownership, Rust allows you to **borrow** data. This borrowing can be done **immutably** or **mutably**. There are restrictions on borrowing which prevent **data races**, **iterator invalidation** and **bugs caused by concurrency**.
+Rust では、データをコピーしたり所有権を移したりする代わりに、データを**借用**できます。借用には**不変(immutable)**と**可変(mutable)**の 2 種類があり、**データ競合(data race)**、**イテレータの無効化(iterator invalidation)**、**並行処理が原因のバグ**を防ぐために、借用には制限が設けられています。
 
-#### Immutable Borrowing
+#### 不変借用(Immutable Borrowing)
 
-Immutable borrowing allows for read-only borrows. There can be an **any number of these borrows** at any one time:
+不変借用は読み取り専用の借用です。同時に**いくつでも**この借用を行えます。
 
 ```rust
 fn main() {
@@ -63,11 +63,11 @@ fn main() {
 }
 ```
 
-This compiles correctly, and acts as you would expect.
+これは問題なくコンパイルでき、期待どおりに動作します。
 
-#### Mutable Borrowing
+#### 可変借用(Mutable Borrowing)
 
-Mutable borrowing is a read/write borrow.
+可変借用は読み書き可能な借用です。
 
 ```rust
 fn main() {
@@ -80,7 +80,7 @@ fn main() {
 }
 ```
 
-However, to prevent bugs such as data races, we **cannot have two mutable borrows**:
+ただし、データ競合のようなバグを防ぐため、**可変借用を 2 つ同時に持つことはできません**。
 
 ```rust
 fn main() {
@@ -108,7 +108,7 @@ error[E0499]: cannot borrow `original` as mutable more than once at a time
   |                    - first borrow later used here
 ```
 
-Similarly, we actually can't take an **immutable** reference either!
+同様に、実は**不変**参照を取ることもできません。
 
 ```rust
 fn main() {
@@ -136,14 +136,14 @@ error[E0502]: cannot borrow `original` as immutable because it is also borrowed 
   |                    - mutable borrow later used here
 ```
 
-So we can have either
+つまり、持てるのは次のどちらかです。
 
-* **one** mutable borrow
-* **any number** of immutable borrows
+* 可変借用が**ひとつ**
+* 不変借用が**いくつでも**
 
-But it is not allowed for us to mix and match - **the compiler enforces this**.
+しかし、両者を混ぜることは許されません。**コンパイラがこれを強制します**。
 
-Notably, even if the borrow is **immutable** we are unable to modify the original mutable variable. Take the following example:
+注目すべき点として、借用が**不変**であっても、借用元の可変変数を変更することはできません。次の例を見てください。
 
 ```rust
 fn main() {
@@ -156,7 +156,7 @@ fn main() {
 }
 ```
 
-We get the error
+次のエラーになります。
 
 ```
 error[E0506]: cannot assign to `original` because it is borrowed
@@ -171,13 +171,13 @@ error[E0506]: cannot assign to `original` because it is borrowed
   |                    - borrow later used here
 ```
 
-Coming from a language like C, we can be forgiven for thinking that we can get a pointer to a variable and, once the variable is modified, read the new value with this pointer. But Rust doesn't allow that!
+C のような言語に慣れていると、変数へのポインタを取っておいて、変数が変更されたあとにそのポインタで新しい値を読めると考えてしまっても無理はありません。しかし Rust ではそれは許されません。
 
-### Lifetimes
+### ライフタイム(Lifetimes)
 
-A **lifetime** is what the compiler's borrow checker uses to ensure borrows are valid. A lifetime begins when a variable is created, and ends when it is destroyed. [The Rust book](https://doc.rust-lang.org/rust-by-example/scope/lifetime.html) has a fantastic description of lifetimes, as well as how you can explicitly control them. The idea is that a variable is tied to the existence of other variables, and dies once they die.
+**ライフタイム**は、コンパイラの借用チェッカ(borrow checker)が借用の妥当性を確認するために使うものです。ライフタイムは変数が作られたときに始まり、破棄されたときに終わります。[The Rust book](https://doc.rust-lang.org/rust-by-example/scope/lifetime.html) にライフタイムの素晴らしい解説があり、明示的に制御する方法も載っています。考え方としては、変数は他の変数の存在に結び付けられ、それらが消えると一緒に消えます。
 
-Think about this example:
+次の例を考えてみます。
 
 ```rust
 let r;
@@ -189,7 +189,7 @@ let r;
 println!("r: {}", r);
 ```
 
-In something like C, `x` would go out of scope and die once the `}` ends the scope, while `r` lives on as a dangling reference to where `x` would have been. In Rust, the compiler catches this and refuses to compile.
+C のような言語では、`}` でスコープが終わった時点で `x` はスコープから外れて消え、`r` は `x` があった場所を指すダングリング参照として生き残ります。Rust ではコンパイラがこれを検出し、コンパイルを拒否します。
 
 ```
 error[E0597]: `x` does not live long enough
@@ -206,15 +206,15 @@ error[E0597]: `x` does not live long enough
   |                       - borrow later used here
 ```
 
-Meanwhile, if we move the `println!` into the scope defined by the `{}`, the program compiles fine as `x` lives long enough for the borrowed value to be used.
+一方、`println!` を `{}` で定義されたスコープの中に移せば、`x` は借用した値が使われるまで十分に長く生きているので、問題なくコンパイルできます。
 
-### No Null Pointers
+### ヌルポインタがない(No Null Pointers)
 
-Rust does not have null pointers - cases must be handled explicitly. This prevents null pointer dereferences and maybe-null bugs.
+Rust にはヌルポインタ(null pointer)がなく、そうしたケースは明示的に処理しなければなりません。これにより、ヌルポインタ参照や、null かもしれない値に関するバグを防げます。
 
-### Out of Bounds
+### 境界外アクセス(Out of Bounds)
 
-Rust performs out-of-bounds checking at compilation time, but if this is impossible (e.g. the index is provided by the user), it automatically includes runtime OOB checks. Take the following code for example:
+Rust はコンパイル時に境界外(OOB)チェックを行います。それが不可能な場合(たとえばインデックスがユーザー入力で与えられる場合)は、実行時の OOB チェックが自動的に挿入されます。次のコードを例に考えます。
 
 ```rust
 use std::io;
@@ -234,7 +234,7 @@ fn main() {
 }
 ```
 
-If we run the program and input `5`, which is OOB, the program panics:
+プログラムを実行して OOB となる `5` を入力すると、プログラムはパニック(panic)します。
 
 ```
 thread 'main' (7216640) panicked at src/main.rs:13:17:

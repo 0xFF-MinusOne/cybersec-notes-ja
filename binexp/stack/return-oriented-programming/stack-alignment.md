@@ -4,13 +4,13 @@ description: A minor issue
 
 # Stack Alignment
 
-A small issue you may get when pwning on 64-bit systems is that your exploit works perfectly locally but fails remotely - or even fails when you try to use the provided LIBC version rather than your local one. This arises due to something called **stack alignment**.
+64-bit システムで pwn していると、エクスプロイトがローカルでは完璧に動くのに、リモートでは失敗することがあります。ローカルの LIBC ではなく、提供された LIBC を使おうとしたときに失敗する場合もあります。これは**スタックアライメント(stack alignment)**と呼ばれるものが原因です。
 
-Essentially the [x86-64 ABI (application binary interface) guarantees 16-byte alignment on a `call` instruction](https://stackoverflow.com/questions/54393105/libcs-system-when-the-stack-pointer-is-not-16-padded-causes-segmentation-faul). LIBC takes advantage of this and uses [SSE data transfer instructions](https://docs.oracle.com/cd/E26502\_01/html/E28388/eojde.html) to optimise execution; `system` in particular utilises instructions such as `movaps`.
+基本的に、[x86-64 ABI(application binary interface)は、`call` 命令の時点で 16 バイトアライメントを保証します](https://stackoverflow.com/questions/54393105/libcs-system-when-the-stack-pointer-is-not-16-padded-causes-segmentation-faul)。LIBC はこれを前提にして、実行を最適化するために [SSE のデータ転送命令](https://docs.oracle.com/cd/E26502\_01/html/E28388/eojde.html)を使います。特に `system` は `movaps` などの命令を使います。
 
-That means that if the stack is not 16-byte aligned - that is, RSP is not a multiple of 16 - the ROP chain will fail on `system`.
+つまり、スタックが 16 バイトにアライメントされていない(RSP が 16 の倍数でない)と、ROP チェーンは `system` で失敗します。
 
-The fix is simple - in your ROP chain, before the call to `system`, place a singular `ret` gadget:
+修正は簡単で、ROP チェーンの `system` を呼び出す前に、`ret` ガジェットを 1 つだけ置きます。
 
 ```python
 ret = elf.address + 0x2439
@@ -22,4 +22,4 @@ rop.raw(ret)        # align the stack
 rop.raw(system)
 ```
 
-This works because it will cause RSP to be popped an additional time, pushing it forward by 8 bytes and aligning it.
+これは、RSP が余分に 1 回 pop されて 8 バイト進み、アライメントが揃うためにうまくいきます。

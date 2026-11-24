@@ -1,20 +1,20 @@
 ---
-description: Removing the artificial sleep
+description: 人為的なスリープを取り除く
 ---
 
 # Double-Fetch without Sleep
 
-## Overview
+## 概要
 
-In reality, there won't be a 1-second sleep for your race condition to occur. This means we instead have to hope that it occurs in the assembly instructions between the two dereferences!
+現実には、レースコンディションを起こすための 1 秒間のスリープはありません。つまり、2 つのデリファレンスの間にあるアセンブリ命令の合間で競合が起きることを期待するしかありません。
 
-This will not work every time - in fact, it's quite likely to not work! - so we will instead have **two** loops; one that keeps writing `0` to the ID, and another that writes another value - e.g. `900` - and then calling `write`. The aim is for the thread that switches to `0` to sync up so perfectly that the switch occurs inbetween the ID check and the ID "assignment".
+毎回成功するわけではなく、むしろ失敗する可能性のほうがかなり高いです。そこで、ループを **2 つ** 用意します。1 つは ID に `0` を書き続けるもの、もう 1 つは別の値(例えば `900`)を設定して `write` を呼び続けるものです。目標は、`0` に切り替えるスレッドのタイミングがぴったり合い、切り替えが ID チェックと ID の「代入」の間に入ることです。
 
 {% file src="../../../.gitbook/assets/double_fetch_no_sleep.zip" %}
 
-## Analysis
+## 解析
 
-If we check the source, we can see that there is no `msleep` any longer:
+ソースを確認すると、`msleep` がなくなっていることが分かります。
 
 ```c
 if (creds->id == 0) {
@@ -31,9 +31,9 @@ if (!strcmp(creds->password, PASSWORD)) {
 }
 ```
 
-## Exploitation
+## エクスプロイト
 
-Our exploit is going to look slightly different! We'll create the `Credentials` struct again and set the ID to `900`:
+今回のエクスプロイトは少し違った形になります。まず `Credentials` 構造体をもう一度作り、ID を `900` に設定します。
 
 ```c
 Credentials creds;
@@ -41,7 +41,7 @@ creds.id = 900;
 strcpy(creds.password, "p4ssw0rd");
 ```
 
-Then we are going to write this struct to the module repeatedly. We will loop it 1,000,000 times (effectively infinite) to make sure it terminates:
+次に、この構造体をモジュールに繰り返し書き込みます。確実に終了するよう、1,000,000 回(実質的には無限)ループさせます。
 
 ```c
 // don't want to make the loop infinite, just in case
@@ -57,9 +57,9 @@ for (int i = 0; i < 1000000; i++) {
 }
 ```
 
-If the ID returned is `0`, we won the race! It is really important to keep in mind exactly what the "success" condition is, and how you can check for it.
+返された ID が `0` なら、レースに勝ったことになります。「成功」の条件が正確には何なのか、それをどう確認できるのかを、常に意識しておくことがとても重要です。
 
-Now, in the second thread, we will constantly cycle between ID `900` and `0`. We do this in the hope that it will be `900` on the first dereference, and `0` on the second! I make this loop infinite because it is a thread, and the thread will be killed when the program is (provided you remove `pthread_join()`! Otherwise your main thread will wait forever for the second to stop!).
+2 つ目のスレッドでは、ID を `900` と `0` の間で延々と切り替え続けます。1 回目のデリファレンスで `900`、2 回目で `0` になることを期待するわけです。これはスレッドなので、ループは無限にしています。プログラムが終了すればスレッドも終了します(ただし `pthread_join()` は取り除いてください。そうしないと、メインスレッドが 2 つ目のスレッドの終了を永遠に待ち続けます)。
 
 ```c
 void *switcher(void *arg) {
@@ -72,7 +72,7 @@ void *switcher(void *arg) {
 }
 ```
 
-Compile the exploit and run it, we get the desired result:
+エクスプロイトをコンパイルして実行すると、期待どおりの結果が得られます。
 
 ```c
 ~ $ ./exploit 
@@ -83,11 +83,11 @@ FD: 3
 [-] Finished race
 ```
 
-Look how quick that was! Insane - two fails, then a success!
+なんて速いのでしょう。驚きです。2 回失敗しただけで成功しました。
 
-### Race Analysis
+### レースの解析
 
-You might be wondering how tight the race window can be for exploitation - well, [`gnote` from TokyoWesterns CTF 2019](https://rpis.ec/blog/tokyowesterns-2019-gnote/) had a race of two assembly instructions:
+競合の窓がどれほど狭くても悪用できるのか、疑問に思うかもしれません。[TokyoWesterns CTF 2019 の `gnote`](https://rpis.ec/blog/tokyowesterns-2019-gnote/) では、競合の窓はアセンブリ命令 2 つぶんでした。
 
 ```
 ; note that rbx is the buf argument, user-controlled
@@ -98,4 +98,4 @@ mov rax, jump_table[rax*8]
 jmp rax
 ```
 
-The dereferences `[rbx]` have just one assembly instruction between, yet we are capable of racing. THAT is just how tight!
+2 つの `[rbx]` のデリファレンスの間にある命令は 1 つだけですが、それでも競合を起こせます。これほど狭いのです。

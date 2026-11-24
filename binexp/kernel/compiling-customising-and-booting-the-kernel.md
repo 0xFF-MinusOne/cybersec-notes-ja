@@ -1,45 +1,45 @@
 ---
 description: >-
-  Instructions for compiling the kernel with your own settings, as well as
-  compiling kernel modules for a specific kernel version.
+  独自の設定でカーネルをコンパイルする手順と、特定のカーネルバージョン向けに
+  カーネルモジュールをコンパイルする手順です。
 ---
 
-# Compiling, Customising and booting the Kernel
+# カーネルのコンパイル、カスタマイズ、起動
 
 {% hint style="info" %}
-This isn't necessary for learning how to write kernel exploits - all the important parts will be provided! This is just to help those hoping to write challenges of their own, or perhaps set up their own VMs for learning purposes.
+カーネルエクスプロイトの書き方を学ぶだけなら、この内容は必須ではありません。重要な部分はすべて提供されます。これは、自分で問題を作りたい方や、学習用に自分で VM を用意したい方のための補足です。
 {% endhint %}
 
-## Prerequisites
+## 前提条件
 
 ```bash
 $ apt-get install flex bison libelf-dev
 ```
 
 {% hint style="info" %}
-There may be other requirements, I just already had them. Check [here](https://github.com/torvalds/linux/blob/master/Documentation/process/changes.rst) for the full list.
+ほかにも必要なものがあるかもしれませんが、私の環境にはすでに入っていました。完全な一覧は[こちら](https://github.com/torvalds/linux/blob/master/Documentation/process/changes.rst)で確認してください。
 {% endhint %}
 
-## The Kernel
+## カーネル
 
-### Cloning
+### クローン
 
 ```bash
 git clone https://github.com/torvalds/linux --depth=1
 ```
 
-Use `--depth 1` to only get the last commit.
+`--depth 1` を使うと、最新のコミットだけを取得できます。
 
-### Customise
+### カスタマイズ
 
-Remove the current compilation configurations, as they are quite complex for our needs
+現在のコンパイル設定は、今回の目的には複雑すぎるので削除します。
 
 ```bash
 $ cd linux
 $ rm -f .config
 ```
 
-Now we can create a **minimal configuration**, with almost all options disabled. A `.config` file is generated with the least features and drivers possible.
+これで、ほとんどのオプションを無効にした**最小構成**を作れます。可能な限り少ない機能とドライバだけを含む `.config` ファイルが生成されます。
 
 ```bash
 $ make allnoconfig
@@ -56,7 +56,7 @@ $ make allnoconfig
 #
 ```
 
-We create a `kconfig` file with the options we want to enable. An example is the following:
+有効にしたいオプションを書いた `kconfig` ファイルを作ります。例は次のとおりです。
 
 ```
 CONFIG_64BIT=y
@@ -97,97 +97,97 @@ CONFIG_USERFAULTFD=y
 
 <details>
 
-<summary>Explanation of Options</summary>
+<summary>オプションの説明</summary>
 
-* `CONFIG_64BIT` - compiles the kernel for 64-bit
-* `CONFIG_SMP` - simultaneous multiprocessing; allows the kernel to run on multiple cores
-* `CONFIG_PRINTK`, `CONFIG_PRINTK_TIME` - enables log messages and timestamps
-* `CONFIG_PCI` - enables support for loading an initial RAM disk
-* `CONFIG_RD_GZIP` - enables support for gzip-compressed initrd images
-* `CONFIG_BINFMT_ELF` - enables support for executing ELF binaries
-* `CONFIG_BINFMT_SCRIPT` - enables executing scripts with a shebang (`#!`) line
-* `CONFIG_DEVTMPFS` - Enables automatic creation of device nodes in `/dev` at boot time using devtmpfs
-* `CONFIG_INPUT` - enables support for the generic input layer required for input device handling
-* `CONFIG_INPUT_EVDEV` - enables support for the event device interface, which provides a unified input event framework
-* `CONFIG_INPUT_KEYBOARD` - enables support for keyboards
-* `CONFIG_MODULES` - enables support for loading and unloading kernel modules
-* `CONFIG_KPROBES` - disables support for kprobes, a kernel-based debugging mechanism. We disable this because ... TODO
-* `CONFIG_LTO_NONE` - disables **Link Time Optimization** (LTO) for kernel compilation. This is to [allow better debugging](https://stackoverflow.com/questions/7857601/why-not-always-use-compiler-optimization)&#x20;
+* `CONFIG_64BIT` - カーネルを 64 ビット向けにコンパイルする
+* `CONFIG_SMP` - 対称型マルチプロセッシング(simultaneous multiprocessing)。カーネルが複数のコアで動作できるようにする
+* `CONFIG_PRINTK`, `CONFIG_PRINTK_TIME` - ログメッセージとタイムスタンプを有効にする
+* `CONFIG_PCI` - 初期 RAM ディスクの読み込みのサポートを有効にする
+* `CONFIG_RD_GZIP` - gzip 圧縮された initrd イメージのサポートを有効にする
+* `CONFIG_BINFMT_ELF` - ELF バイナリの実行のサポートを有効にする
+* `CONFIG_BINFMT_SCRIPT` - シバン(`#!`)行付きのスクリプトの実行を有効にする
+* `CONFIG_DEVTMPFS` - 起動時に devtmpfs を使って `/dev` にデバイスノードを自動作成できるようにする
+* `CONFIG_INPUT` - 入力デバイスの処理に必要な汎用入力レイヤーのサポートを有効にする
+* `CONFIG_INPUT_EVDEV` - 統一的な入力イベントの枠組みを提供するイベントデバイスインターフェースのサポートを有効にする
+* `CONFIG_INPUT_KEYBOARD` - キーボードのサポートを有効にする
+* `CONFIG_MODULES` - カーネルモジュールの読み込みと取り外しのサポートを有効にする
+* `CONFIG_KPROBES` - カーネルベースのデバッグ機構である kprobes のサポートを無効にする。無効にする理由は ... TODO
+* `CONFIG_LTO_NONE` - カーネルのコンパイルで**リンク時最適化**(Link Time Optimization、LTO)を無効にする。これは[デバッグをしやすくする](https://stackoverflow.com/questions/7857601/why-not-always-use-compiler-optimization)ためです&#x20;
 * `CONFIG_SERIAL_8250`, `CONFIG_SERIAL_8250_CONSOLE` - TODO
-* `CONFIG_EMBEDDED` - disables optimizations/features for embedded systems
-* `CONFIG_TMPFS` - enables support for the tmpfs in-memory filesystem
-* `CONFIG_RELOCATABLE` - builds a relocatable kernel that can be loaded at different physical addresses
-* `CONFIG_RANDOMIZE_BASE` - enables KASLR support
-* `CONFIG_USERFAULTFD` - enables support for the `userfaultfd` system call, which allows handling of page faults in user space
+* `CONFIG_EMBEDDED` - 組み込みシステム向けの最適化や機能を無効にする
+* `CONFIG_TMPFS` - メモリ上のファイルシステムである tmpfs のサポートを有効にする
+* `CONFIG_RELOCATABLE` - 異なる物理アドレスに読み込める再配置可能なカーネルをビルドする
+* `CONFIG_RANDOMIZE_BASE` - KASLR のサポートを有効にする
+* `CONFIG_USERFAULTFD` - ユーザー空間でページフォールトを処理できる `userfaultfd` システムコールのサポートを有効にする
 
 </details>
 
-In order to update the minimal `.config` with these options, we use the provided `merge_config.sh` script:
+最小構成の `.config` をこれらのオプションで更新するには、付属の `merge_config.sh` スクリプトを使います。
 
 ```bash
 $ scripts/kconfig/merge_config.sh .config ../kconfig
 ```
 
-### Building
+### ビルド
 
 ```bash
 $ make -j4
 ```
 
-That takes a while, but eventually builds a kernel in `arch/x86/boot/bzImage`. This is the same `bzImage` that you get in CTF challenges.
+しばらく時間がかかりますが、最終的に `arch/x86/boot/bzImage` にカーネルがビルドされます。これは、CTF の問題で渡されるものと同じ `bzImage` です。
 
-## Kernel Modules
+## カーネルモジュール
 
-[When we compile kernel modules for our own kernel](writing-a-char-module/#compiling), we use the following `Makefile` structure:
+[自分のカーネル向けにカーネルモジュールをコンパイルする場合](writing-a-char-module/#compiling)は、次のような `Makefile` の構成を使います。
 
 ```
 all:
     make -C /lib/modules/$(shell uname -r)/build M=$(PWD) modules
 ```
 
-To compile it for a different kernel, all we do is change the `-C` flag to point to the newly-compiled kernel rather than the system's:
+別のカーネル向けにコンパイルするには、`-C` フラグを、システムのものではなく新しくコンパイルしたカーネルを指すように変えるだけです。
 
 ```
 all:
     make -C /home/ir0nstone/linux M=$(PWD) modules
 ```
 
-The module is now compiled for the specific kernel version!
+これで、モジュールが特定のカーネルバージョン向けにコンパイルされます。
 
-## Booting the Kernel in a Virtual Machine
+## 仮想マシンでカーネルを起動する
 
-### References
+### 参考資料
 
 * [Build the Linux kernel and Busybox and run them on QEMU](https://www.centennialsoftwaresolutions.com/post/Build-the-Linux-kernel-and-Busybox-and-run-on-QEMU)
 * [How to Build A Custom Linux Kernel For Qemu (2015 Edition)](https://mgalgs.io/2015/05/16/how-to-build-a-custom-linux-kernel-for-qemu-2015-edition.html)
 
-### Creating the File System and Executables
+### ファイルシステムと実行ファイルを作る
 
-We now have a minimal kernel `bzImage` and a kernel module that is compiled for it. Now we need to create a minimal VM to run it in.
+これで、最小構成のカーネル `bzImage` と、それ向けにコンパイルしたカーネルモジュールが手に入りました。次は、それを動かすための最小限の VM を作ります。
 
-To do this, we use [`busybox`](https://busybox.net/about.html), an executable that contains tiny versions of most Linux executables. This allows us to have all of the required programs, in as little space as possible.
+そのために、ほとんどの Linux コマンドの小型版を 1 つにまとめた実行ファイル [`busybox`](https://busybox.net/about.html) を使います。これにより、必要なプログラムをできるだけ小さな容量でそろえられます。
 
-We will download and extract `busybox`; you can find the latest version [here](https://busybox.net/downloads/).
+`busybox` をダウンロードして展開します。最新バージョンは[こちら](https://busybox.net/downloads/)で確認できます。
 
 <pre class="language-bash"><code class="lang-bash"><strong>$ curl https://busybox.net/downloads/busybox-1.36.1.tar.bz2 | tar xjf -
 </strong></code></pre>
 
-We also create an output folder for compiled versions.
+コンパイル結果を置く出力用のフォルダも作ります。
 
 ```bash
 $ mkdir busybox_compiled
 ```
 
-Now compile it statically. We're going to use the `menuconfig` option, so we can make some choices.
+次に、静的にコンパイルします。いくつか選択ができるように、`menuconfig` オプションを使います。
 
 ```bash
 $ cd busybox-1.36.1
 $ make O=../busybox_compiled menuconfig
 ```
 
-Once the menu loads, hit `Enter` on `Settings`. Hit the down arrow key until you reach the option `Build static binary (no shared libs)`. Hit `Space` to select it, and then `Escape` twice to leave. Make sure you choose to save the configuration.
+メニューが表示されたら、`Settings` で `Enter` を押します。`Build static binary (no shared libs)` のオプションまで下矢印キーで移動し、`Space` で選択してから、`Escape` を 2 回押して抜けます。設定を保存することを必ず選んでください。
 
-Now, make it with the new options
+新しいオプションでビルドします。
 
 ```bash
 $ cd ../busybox_compiled
@@ -195,7 +195,7 @@ $ make -j
 $ make install
 ```
 
-Now we make the file system.
+次に、ファイルシステムを作ります。
 
 ```bash
 $ cd ..
@@ -206,7 +206,7 @@ $ cp -av ../busybox_compiled/_install/* .
 $ sudo cp -av /dev/{null,console,tty,sda1} dev/
 ```
 
-The last thing missing is the classic `init` script, which gets run on system load. A provisional one works fine for now:
+あとは、システムの起動時に実行される、おなじみの `init` スクリプトだけが足りません。今のところは仮のもので十分です。
 
 ```bash
 #!/bin/sh
@@ -219,32 +219,32 @@ echo -e "\nBoot took $(cut -d' ' -f1 /proc/uptime) seconds\n"
 exec /bin/sh
 ```
 
-Make it executable
+実行可能にします。
 
 ```bash
 $ chmod +x init
 ```
 
-Finally, we're going to bundle it into a `cpio` archive, which is understood by QEMU.
+最後に、QEMU が認識できる `cpio` アーカイブにまとめます。
 
 ```bash
 find . -not -name *.cpio | cpio -o -H newc > initramfs.cpio
 ```
 
 {% hint style="warning" %}
-* The `-not -name *.cpio` is there to prevent the archive from including itself
-* You can even compress the filesystem to a `.cpio.gz` file, which QEMU also recognises
+* `-not -name *.cpio` は、アーカイブ自身が含まれてしまうのを防ぐためのものです
+* ファイルシステムを `.cpio.gz` ファイルに圧縮することもでき、QEMU はそれも認識します
 {% endhint %}
 
-If we want to extract the `cpio` archive (say, during a CTF) we can use this command:
+`cpio` アーカイブを展開したい場合(たとえば CTF の最中など)は、次のコマンドを使えます。
 
 ```bash
 $ cpio -i -F initramfs.cpio
 ```
 
-### Loading it with QEMU
+### QEMU で読み込む
 
-Put `bzImage` and `initramfs.cpio` into the same folder. Write a short `run.sh` script that loads QEMU:
+`bzImage` と `initramfs.cpio` を同じフォルダに置きます。QEMU を起動する短い `run.sh` スクリプトを書きます。
 
 ```bash
 #!/bin/sh
@@ -260,33 +260,33 @@ qemu-system-x86_64 \
 
 <details>
 
-<summary>Explanation of Flags</summary>
+<summary>フラグの説明</summary>
 
-* `-kernel bzImage` - sets the kernel to be our compiled `bzImage`
-* `-initrd initramfs.cpio` - provide the file system
-* `-append ...` - basic features; in the future, this flag is also used to set protections
-  * `console=ttyS0` - Directs kernel messages to the first serial port (`ttyS0`)
-  * `quiet` - Only showing critical messages from the kernel
-  * `loglevel=3` - Only show error messages and higher-priority messages
-  * `oops=panic` - Make the kernel panic immediately on an **oops** (kernel error)
-* `-monitor /dev/null` - Disable the QEMU monitor
-* `-nographic` - Disable GUI, operate in headless mode (faster)
-* `no-reboot` - Do not automatically restart the VM when encountering a problem (useful for debugging and working out why it crashes, as the crash logs will stay).
+* `-kernel bzImage` - カーネルとして、コンパイルした `bzImage` を指定する
+* `-initrd initramfs.cpio` - ファイルシステムを渡す
+* `-append ...` - 基本的な機能を指定する。今後、このフラグは保護機構の設定にも使います
+  * `console=ttyS0` - カーネルのメッセージを最初のシリアルポート(`ttyS0`)に出力する
+  * `quiet` - カーネルからは重要なメッセージだけを表示する
+  * `loglevel=3` - エラーメッセージとそれより優先度の高いメッセージだけを表示する
+  * `oops=panic` - **oops**(カーネルエラー)が起きたら、カーネルをただちに panic させる
+* `-monitor /dev/null` - QEMU モニタを無効にする
+* `-nographic` - GUI を無効にし、ヘッドレスモードで動作させる(より高速)
+* `no-reboot` - 問題が起きたときに VM を自動で再起動しない(クラッシュログが残るので、デバッグやクラッシュの原因の調査に便利です)
 
 </details>
 
-Once we make this executable and run it, we get loaded into a VM!
+これを実行可能にして実行すると、VM が起動します。
 
-### User Accounts
+### ユーザーアカウント
 
-Right now, we have a minimal linux kernel we can boot, but if we try and work out who we are, it doesn't act quite as we expect it to:
+現時点で、起動できる最小限の Linux カーネルはできていますが、自分が誰なのかを調べようとすると、期待どおりには動作しません。
 
 ```
 ~ # whoami
 whoami: unknown uid 0
 ```
 
-This is because `/etc/passwd` and `/etc/group` don't exist, so we can just create those!
+これは `/etc/passwd` と `/etc/group` が存在しないためなので、作ってしまえば解決します。
 
 {% code title="/etc/passwd" %}
 ```
@@ -302,11 +302,11 @@ user:x:1000:
 ```
 {% endcode %}
 
-### Loading the Kernel Module
+### カーネルモジュールを読み込む
 
-The final step is, of course, the loading of the kernel module. I will be using the module from my [Double Fetch](double-fetch/) section for this step.
+最後の手順は、もちろんカーネルモジュールの読み込みです。ここでは、私の [Double Fetch](double-fetch/) の節で使ったモジュールを使います。
 
-First, we copy the `.ko` file to the filesystem root. Then we modify the `init` script to load it, and also set the UID of the loaded shell to `1000` (so we are not root!).
+まず、`.ko` ファイルをファイルシステムのルートにコピーします。次に、`init` スクリプトを修正してそれを読み込ませ、起動するシェルの UID も `1000` に設定します(root にならないようにするためです)。
 
 ```bash
 #!/bin/sh
@@ -324,27 +324,27 @@ setsid /bin/cttyhack setuidgid 1000 /bin/sh
 ```
 
 {% hint style="danger" %}
-Here I am assuming that the major number of the `double_fetch` module is `253`.
+ここでは、`double_fetch` モジュールのメジャー番号が `253` であると仮定しています。
 
-Why am I doing that?
+なぜそうするのでしょうか。
 
-If we load into a shell and run `cat /proc/devices`, we can see that `double_fetch` is loaded with major number `253` every time. I can't find any way to load this in _without_ guessing the major number, so we're sticking with this for now - please get in touch if you find one!
+シェルに入って `cat /proc/devices` を実行すると、`double_fetch` が毎回メジャー番号 `253` で読み込まれていることが分かります。メジャー番号を推測_せずに_読み込む方法が見つからなかったので、今のところはこの方法で進めます。方法をご存じの方はぜひご連絡ください。
 {% endhint %}
 
-## Compiling a Different Kernel Version
+## 別のバージョンのカーネルをコンパイルする
 
-If we want to compile a kernel version that is **not** the latest, we'll dump all the [tags](https://github.com/torvalds/linux/tags):
+最新**ではない**バージョンのカーネルをコンパイルしたい場合は、すべての[タグ](https://github.com/torvalds/linux/tags)を取得します。
 
 <pre class="language-bash"><code class="lang-bash"><strong>$ git fetch --tags
 </strong></code></pre>
 
-It takes ages to run, naturally. Once we do that, we can check out a specific version of choice:
+当然ながら、実行にはかなり時間がかかります。取得できたら、好きなバージョンをチェックアウトできます。
 
 <pre class="language-bash"><code class="lang-bash"><strong>$ git checkout v5.11
 </strong></code></pre>
 
-We then continue from there.
+そこから先は同じ手順で進めます。
 
 {% hint style="danger" %}
-Some tags seem to not have the correct header files for compilation. Others, weirdly,  compile kernels that build, but then never load in QEMU. I'm not quite sure why, to be frank.
+タグによっては、コンパイルに必要な正しいヘッダファイルがないようです。また、不思議なことに、ビルドは通るのに QEMU で一向に起動しないカーネルになるタグもあります。正直なところ、理由はよく分かっていません。
 {% endhint %}

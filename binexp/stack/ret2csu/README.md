@@ -1,12 +1,12 @@
 ---
-description: Controlling registers when gadgets are lacking
+description: ガジェットが足りないときにレジスタを制御する
 ---
 
 # ret2csu
 
-**ret2csu** is a technique for populating registers when there is a lack of gadgets. More information can be found in the [original paper](https://i.blackhat.com/briefings/asia/2018/asia-18-Marco-return-to-csu-a-new-method-to-bypass-the-64-bit-Linux-ASLR-wp.pdf), but a summary is as follows:
+**ret2csu** は、ガジェットが不足しているときにレジスタへ値を設定するための手法です。詳しい情報は[元の論文](https://i.blackhat.com/briefings/asia/2018/asia-18-Marco-return-to-csu-a-new-method-to-bypass-the-64-bit-Linux-ASLR-wp.pdf)にありますが、概要は次のとおりです。
 
-When an application is dynamically compiled \(compiled with libc linked to it\), there is a selection of functions it contains to allow the linking. These functions contain **within them** a selection of gadgets that we can use to populate registers we lack gadgets for, most importantly `__libc_csu_init`, which contains the following two gadgets:
+アプリケーションが動的にコンパイルされている(libc がリンクされている)場合、リンクを可能にするための関数がいくつか含まれています。これらの関数は **その内部に** ガジェットをいくつか含んでおり、ガジェットが足りないレジスタに値を設定するのに使えます。中でも重要なのが `__libc_csu_init` で、次の2つのガジェットを含んでいます。
 
 ```text
 0x004011a2      5b             pop rbx
@@ -25,17 +25,16 @@ When an application is dynamically compiled \(compiled with libc linked to it\),
 0x00401191      41ff14df       call qword [r15 + rbx*8]
 ```
 
-The second might not **look** like a gadget, but if you look it calls `r15 + rbx*8`. The first gadget chain allows us to control both `r15` and `rbx` in that series of huge `pop` operations, meaning whe can control where the second gadget calls afterwards.
+2つ目はガジェットには _見えない_ かもしれませんが、`r15 + rbx*8` を呼び出しています。1つ目のガジェットチェーンでは、大量の `pop` 操作の中で `r15` と `rbx` の両方を制御できるため、その後に2つ目のガジェットがどこを呼び出すかを制御できます。
 
 {% hint style="info" %}
-Note it's `call qword [r15 + rbx*8]`, not `call qword r15 + rbx*8`. This means it'll calculate `r15 + rbx*8` then **go to that memory address**, read it, and call **that value**. This mean we have to find a memory address that contains where we want to jump.
+`call qword r15 + rbx*8` ではなく `call qword [r15 + rbx*8]` である点に注意してください。これは、`r15 + rbx*8` を計算し、そのメモリアドレスへ **移動して**、そこを読み取り、**その値** を呼び出すという意味です。つまり、ジャンプしたい先のアドレスが格納されているメモリアドレスを見つける必要があります。
 {% endhint %}
 
-These gadget chains allow us, despite an apparent lack of gadgets, to populate the RDX and RSI registers \(which are important for parameters\) via the second gadget, then jump wherever we wish by simply controlling `r15` and `rbx` to workable values.
+これらのガジェットチェーンを使えば、ガジェットが明らかに不足していても、2つ目のガジェットで RDX と RSI レジスタ(パラメータにとって重要です)に値を設定できます。そして、`r15` と `rbx` を扱える値に制御するだけで、好きな場所へジャンプできます。
 
-This means we can potentially pull off syscalls for `execve`, or populate parameters for functions such as `write()`.
+つまり、`execve` のシステムコールを実行したり、`write()` などの関数のパラメータを設定したりできる可能性があります。
 
 {% hint style="info" %}
-You may wonder why we would do something like this if we're linked to libc - why not just read the GOT? Well, some functions - such as `write()` - require three parameters \(and at least 2\), so we would require ret2csu to populate them if there was a lack of gadgets.
+libc にリンクされているのに、なぜこんなことをするのか、GOT を読めばよいのではないかと疑問に思うかもしれません。実は、`write()` などの一部の関数は3つのパラメータ(少なくとも2つ)を必要とします。そのため、ガジェットが不足していれば、それらに値を設定するのに ret2csu が必要になります。
 {% endhint %}
-

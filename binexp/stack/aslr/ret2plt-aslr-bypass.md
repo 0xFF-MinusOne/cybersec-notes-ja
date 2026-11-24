@@ -1,8 +1,8 @@
-# ret2plt ASLR bypass
+# ret2plt による ASLR バイパス
 
-## Overview
+## 概要
 
-This time around, there's no leak. You'll have to use the ret2plt technique explained previously. Feel free to have a go before looking further on.
+今回はリークがありません。前に説明した ret2plt の手法を使う必要があります。先に進む前に、ぜひ自分で挑戦してみてください。
 
 {% file src="../../../.gitbook/assets/ret2plt.zip" caption="ret2plt - 32-bit" %}
 
@@ -23,13 +23,13 @@ int main() {
 }
 ```
 
-## Analysis
+## 解析
 
-We're going to have to leak ASLR base somehow, and the only logical way is a ret2plt. We're not struggling for space as `gets()` takes in as much data as we want.
+なんとかして ASLR のベースをリークする必要があり、現実的な方法は ret2plt しかありません。`gets()` は好きなだけデータを読み込むので、スペースには困りません。
 
-## Exploitation
+## エクスプロイト
 
-All the basic setup
+基本的な準備はすべて同じです。
 
 ```python
 from pwn import *
@@ -39,7 +39,7 @@ libc = elf.libc
 p = process()
 ```
 
-Now we want to send a payload that leaks the real address of `puts`. As mentioned before, calling the PLT entry of a function is the same as calling the function itself; if we point the parameter to the GOT entry, it'll print out it's actual location. This is because in C string arguments for functions actually take a **pointer** to where the string can be found, so pointing it to the GOT entry \(which we know the location of\) will print it out.
+次に、`puts` の実アドレスをリークするペイロードを送ります。前に述べたとおり、関数の PLT エントリを呼ぶのは関数自体を呼ぶのと同じです。パラメータが GOT エントリを指すようにすれば、その実際の場所が出力されます。これは、C では文字列引数が実際には文字列の場所を指す**ポインタ**を受け取るためで、(場所がわかっている)GOT エントリを指すようにすれば、それが出力されるのです。
 
 ```python
 p.recvline()        # just receive the first output
@@ -52,7 +52,7 @@ payload = flat(
 )
 ```
 
-But why is there a `main` there? Well, if we set the return address to random jargon, we'll leak libc base but then it'll crash; if we call `main` again, however, we essentially restart the binary - except we now know `libc` base so this time around we can do a ret2libc.
+ところで、なぜ `main` があるのでしょうか? 戻りアドレスをでたらめな値にすると、libc のベースはリークできても、そのあとクラッシュしてしまいます。しかし `main` を再び呼べば、実質的にバイナリを再起動できます。しかも今度は `libc` のベースがわかっているので、ret2libc を実行できます。
 
 ```python
 p.sendline(payload)
@@ -61,9 +61,9 @@ puts_leak = u32(p.recv(4))
 p.recvlines(2)
 ```
 
-Remember that the GOT entry won't be the only thing printed - `puts`, and most functions in C, print **until a null byte**. This means it will keep on printing GOT addresses, but the only one we care about is the first one, so we grab the first 4 bytes and use `u32()` to interpret them as a little-endian number. After that we ignore the the rest of the values as well as the `Come get me` from calling `main` again.
+GOT エントリだけが出力されるわけではない点を思い出してください。`puts` をはじめ C の多くの関数は、**null バイトまで**出力します。つまり GOT のアドレスが次々と出力され続けますが、必要なのは最初のひとつだけなので、先頭の 4 バイトを取り出し、`u32()` でリトルエンディアンの数値として解釈します。残りの値と、`main` を再び呼んだことによる `Come get me` は読み飛ばします。
 
-From here, we simply calculate libc base again and perform a basic ret2libc:
+ここからは、libc のベースをもう一度計算し、基本的な ret2libc を行うだけです。
 
 ```python
 libc.address = puts_leak - libc.sym['puts']
@@ -81,9 +81,9 @@ p.sendline(payload)
 p.interactive()
 ```
 
-And bingo, we have a shell!
+これでシェルが取れました。
 
-### Final Exploit
+### 最終的なエクスプロイト
 
 ```python
 from pwn import *
@@ -121,9 +121,9 @@ p.sendline(payload)
 p.interactive()
 ```
 
-## 64-bit
+## 64 ビット
 
-You know the drill - try the same thing for 64-bit. If you want, you can use pwntools' ROP capabilities - or, to make sure you understand calling conventions, be daring and do **both** :P
+要領はもうおわかりでしょう。64 ビットでも同じことを試してみてください。よければ pwntools の ROP 機能を使ってもかまいませんし、呼び出し規約をきちんと理解できているか確かめるために、思い切って**両方**やってみてください :P
 
 {% file src="../../../.gitbook/assets/ret2plt-64.zip" caption="ret2plt - 64-bit" %}
 

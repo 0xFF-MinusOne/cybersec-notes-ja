@@ -1,24 +1,23 @@
 ---
-description: 'Shellcode, but without the guesswork'
+description: 'シェルコード、ただし当てずっぽうなしで'
 ---
 
 # Reliable Shellcode
 
 ## Utilising ROP
 
-The problem with shellcode exploits as they are is that the locations of it are questionable - wouldn't it be cool if we could control where we wrote it to?
+シェルコードを使うエクスプロイトの現状の問題は、シェルコードの位置が不確かなことです。書き込む場所を自分で制御できたらすてきだと思いませんか。
 
-Well, we can.
+実は、できます。
 
-Instead of writing shellcode directly, we can instead use some ROP to take in input again - except this time, we specify the location as somewhere we control.
+シェルコードを直接書き込む代わりに、ROP を使ってふたたび入力を受け取らせます。ただし今回は、書き込み先を自分で制御できる場所に指定します。
 
 ## Using ESP
 
-If you think about it, once the return pointer is popped off the stack ESP will points at whatever is after it in memory - after all, that's the entire basis of ROP. But what if we put shellcode there?
+考えてみると、リターンポインタがスタックから pop されると、ESP はメモリ上でその次にあるものを指します。結局のところ、それが ROP の根本的な仕組みです。では、そこにシェルコードを置いたらどうなるでしょうか。
 
-It's a crazy idea. But remember, ESP will point there. So what if we overwrite the return pointer with a `jmp esp` gadget! Once it gets popped off, ESP will point at the shellcode and thanks to the `jmp esp` it will be executed!
+突飛な発想です。でも、ESP がそこを指すことを思い出してください。では、リターンポインタを `jmp esp` ガジェットで上書きしたらどうでしょう。それが pop されると、ESP はシェルコードを指し、`jmp esp` のおかげでそれが実行されます。
 
 ## ret2reg
 
-**ret2reg** extends the use of `jmp esp` to the use of _any_ register that happens to point somewhere you need it to.
-
+**ret2reg** は、`jmp esp` の考え方を拡張して、必要な場所をたまたま指している _任意の_ レジスタを使うものです。

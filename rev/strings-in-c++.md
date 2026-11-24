@@ -1,14 +1,14 @@
-# Strings in C++
+# C++ の文字列
 
-## Basic Strings
+## 基本的な文字列
 
-Reversing C++ can be a pain, and part of the reason for that is that in C++ a `std::string` can be dynamically-sized. This means its appearance in memory is more complex than a `char[]` that you would find in C, because `std::string` [actually contains 3 fields](https://shaharmike.com/cpp/std-string/):
+C++ のリバースエンジニアリングは骨が折れますが、その理由の一つは、C++ の `std::string` が動的にサイズを変えられることです。そのため、メモリ上での見た目は C の `char[]` よりも複雑になります。`std::string` は[実際には 3 つのフィールドを持っている](https://shaharmike.com/cpp/std-string/)からです。
 
-* Pointer to the allocated memory (the actual string itself)
-* Logical size of string
-* Size of allocated memory (which must be bigger than or equal to logical size)
+* 確保されたメモリへのポインタ(実際の文字列そのもの)
+* 文字列の論理的なサイズ
+* 確保されたメモリのサイズ(論理サイズ以上でなければなりません)
 
-The actual string content is dynamically allocated on the **heap**. As a result, `std::string` looks something like this in memory:
+実際の文字列の内容は**ヒープ**(heap)上に動的に確保されます。その結果、`std::string` はメモリ上でおおよそ次のような形をしています。
 
 ```cpp
 class std::string
@@ -19,11 +19,11 @@ class std::string
 };
 ```
 
-This is not necessarily  a _consistent_ implementation, which is why many decompilers don't recognise strings immediately - they can vary between compilers and different versions.
+この実装は必ずしも_一貫している_わけではなく、コンパイラやバージョンによって異なる場合があります。多くのデコンパイラが文字列をすぐには認識できないのは、そのためです。
 
-## Small Object Optimization
+## 小さなオブジェクトの最適化(Small Object Optimization)
 
-Decompilers can confuse us even more depending on how they optimise small objects. Simply put, we would prefer to avoid allocating space on the heap unless absolutely necessary, so if the string is short enough, we try to fit it within the `std::string` struct itself. For example:
+小さなオブジェクトをどう最適化するかによって、デコンパイラの出力はさらに分かりにくくなることがあります。簡単に言えば、本当に必要な場合を除いてヒープに領域を確保するのは避けたいので、文字列が十分に短ければ `std::string` 構造体の中に収めようとします。例を示します。
 
 ```cpp
 class std::string
@@ -31,8 +31,8 @@ class std::string
     char* buf;
     size_t len;
     
-    // union is used to store different data types in the same memory location
-    // this saves space in case only one of them is necessary 
+    // union は、異なるデータ型を同じメモリ位置に格納するために使う
+    // どちらか一方しか必要ない場合に、領域を節約できる
     union
     {
         size_t allocated_len;
@@ -41,6 +41,6 @@ class std::string
 };
 ```
 
-In this example, if the string is 8 bytes or less, `local_buf` is used and the string is stored there instead. `buf` will then point at `local_buf`, and no heap allocation is used.
+この例では、文字列が 8 バイト以下であれば `local_buf` が使われ、文字列はそこに格納されます。このとき `buf` は `local_buf` を指し、ヒープの確保は行われません。
 
-An analysis of different compilers' approaches to Small Object Optimization can be found [here](https://shaharmike.com/cpp/std-string/).
+コンパイラごとの Small Object Optimization の実装方法の分析は、[こちら](https://shaharmike.com/cpp/std-string/)にあります。

@@ -1,35 +1,35 @@
 # Virtual Addresses and Virtual Memory
 
-If we disable ASLR and run two programs side-by-side, we might notice that the libc is loaded into the same address. Contrary to what you might think, these programs are **not** sharing the same instance of libc!
+ASLR を無効にして 2 つのプログラムを並べて実行すると、libc が同じアドレスにロードされていることに気づくかもしれません。そう思えるかもしれませんが、これらのプログラムは libc の同じインスタンスを共有している**わけではありません**。
 
-In fact, even with ASLR off, we can run two different programs and we might still notice that they are loaded into broadly the same part of memory.
+実際、ASLR をオフにしていても、2 つの異なるプログラムが、おおむね同じメモリ領域にロードされていることに気づくことがあります。
 
-The reason for this is is that the addresses we see in a debugger are **virtual addresses**.
+その理由は、デバッガで見えているアドレスが**仮想アドレス**だからです。
 
-## Overview
+## 概要
 
-When a program and its libraries are started up, they are loaded into a [Virtual Address Space](https://en.wikipedia.org/wiki/Virtual_address_space) (VAS). Addresses in the VAS are then **mapped** to **real, physical locations** in RAM!
+プログラムとそのライブラリは、起動時に[仮想アドレス空間(Virtual Address Space)](https://en.wikipedia.org/wiki/Virtual_address_space)(VAS)にロードされます。VAS 内のアドレスは、RAM 上の**実際の物理的な場所**に**マッピング**されます。
 
-This means that if you have two separate programs both loaded at `0x5655523fa000`, this address actually corresponds to two **different locations in RAM**. The OS handles the translation by using the processor's [Memory Management Unit](https://en.wikipedia.org/wiki/Memory_management_unit) (MMU), and the actual memory location differs **for each process**.
+つまり、2 つの別々のプログラムがどちらも `0x5655523fa000` にロードされていたとしても、このアドレスは実際には RAM 上の**異なる場所**に対応しています。OS は、プロセッサの[メモリ管理ユニット(Memory Management Unit)](https://en.wikipedia.org/wiki/Memory_management_unit)(MMU)を使って変換を行い、実際のメモリ上の場所は**プロセスごとに**異なります。
 
-In fact, as the OS is what handles the mapping from virtual addresses to physical addresses, the executable itself only sees virtual addresses! So when pointers are printed out and display virtual addresses, that is not the program handling a layer of abstraction away from you, it genuinely treats pointers in that way. The abstraction is another layer deep.
+実際には、仮想アドレスから物理アドレスへのマッピングを処理するのは OS なので、実行ファイル自体は仮想アドレスしか見ていません。そのため、ポインタを出力して仮想アドレスが表示されても、プログラムがあなたから一段階離れた抽象化を扱っているわけではなく、プログラムは本当にそのようにポインタを扱っています。抽象化はさらにもう一段下の層にあります。
 
-## The Kernel
+## カーネル
 
-The kernel only has **one** continguous virtual address space, so all processes running in kernel mode can see one another (and all user mode programs as well!). In fact, the reason programs are loaded in lower addresses is that in Linux the higher addresses are reserved for the kernel. This is why, [later on](../kernel/), you will see drivers loaded at addresses starting with `0xffff...`
+カーネルには連続した仮想アドレス空間が**1 つ**しかないため、カーネルモードで動作するすべてのプロセスは互いを見ることができます(すべてのユーザーモードのプログラムも見えます)。実際、プログラムが低いアドレスにロードされるのは、Linux では高いアドレスがカーネル用に予約されているためです。そのため、[後で](../kernel/)ドライバが `0xffff...` で始まるアドレスにロードされているのを目にします。
 
-## Benefits
+## 利点
 
-Virtual addressing has three main benefits.
+仮想アドレッシングには、主に 3 つの利点があります。
 
-#### Contiguous Memory Allocation
+#### 連続したメモリ割り当て
 
-While physical RAM may not have a sufficient chunk of contiguous memory for a program, virtual addressing allows us to _pretend_ as if it does, loading large programs into what seems to be one large chunk. The corresponding physical addresses, of course, could really be spread out all over memory. Virtual addresses mean we do not have to worry about such problems.
+物理 RAM には、プログラムに必要なだけの連続したメモリ領域がないことがありますが、仮想アドレッシングでは、あたかもあるかのように_見せかけて_、大きなプログラムを 1 つの大きな塊のように見える領域にロードできます。もちろん、対応する物理アドレスは、メモリ全体に散らばっていても構いません。仮想アドレスのおかげで、そのような問題を気にする必要がありません。
 
-#### Strict Process Isolation
+#### 厳格なプロセス分離
 
-Processes cannot interfere with the address space of another process, creating a stronger security sandbox.
+プロセスは他のプロセスのアドレス空間に干渉できず、より強固なセキュリティサンドボックスになります。
 
-#### Allocate More Memory than we have RAM
+#### RAM より多くのメモリを確保できる
 
-When the physical memory (RAM) is filled up, the OS will move inactive pages in memory to the [swap space](https://docs.redhat.com/en/documentation/red_hat_enterprise_linux/7/html/storage_administration_guide/ch-swapspace), which is located on the **hard drive**. The idea is that, in times of large memory usage, the hard drive acts as a sort of "RAM overflow". Swapped memory is much, much slower than RAM, which is why inactive memory pages are the ones moved. This allows the Operating System to handle low memory gracefully and without crashing. Virtual addressing allows developers to not think about this happening, as the address translation done by the OS via the MMU will automatically map the corresponding virtual addresses to hard drive addresses.
+物理メモリ(RAM)がいっぱいになると、OS はメモリ内の非アクティブなページを、**ハードドライブ**上の[スワップ領域](https://docs.redhat.com/en/documentation/red_hat_enterprise_linux/7/html/storage_administration_guide/ch-swapspace)に移します。メモリ使用量が大きいときに、ハードドライブが一種の「RAM のあふれ先」として機能する、という考え方です。スワップされたメモリは RAM よりはるかに遅いため、移されるのは非アクティブなメモリページです。これにより、OS はメモリ不足にも、クラッシュせず穏やかに対処できます。仮想アドレッシングのおかげで、開発者はこれが起きていることを意識せずに済みます。MMU を通じて OS が行うアドレス変換が、対応する仮想アドレスをハードドライブのアドレスに自動的にマッピングするからです。

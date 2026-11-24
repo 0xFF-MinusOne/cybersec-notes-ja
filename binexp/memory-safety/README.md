@@ -1,12 +1,12 @@
 ---
-description: Languages like Rust and Swift claim to be "memory-safe". What does that mean?
+description: Rust や Swift のような言語は「メモリ安全(memory-safe)」だと謳っています。それは何を意味するのでしょうか。
 ---
 
 # Memory Safety
 
-Memory Safety is the state of being protected from vulnerabilities that can arise from improper memory access control, such as buffer overflows.
+メモリ安全性(Memory Safety)とは、バッファオーバーフローなど、不適切なメモリアクセス制御から生じうる脆弱性から守られている状態のことです。
 
-Virtually all high-level programming languages implement some kind of memory safety; for example, most of them will check that an array index is in bounds before attempting to access it.&#x20;
+ほぼすべての高水準プログラミング言語が、何らかのメモリ安全性を実装しています。例えば、多くの言語は配列にアクセスする前に、インデックスが範囲内にあるかを確認します。&#x20;
 
-In this section we will explore **garbage collection** and other techniques implemented by various languages to provide memory safety.
+このセクションでは、**ガベージコレクション(garbage collection)** と、メモリ安全性を提供するために各言語が実装しているそのほかの技術を見ていきます。
 

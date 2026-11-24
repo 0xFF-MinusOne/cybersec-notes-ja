@@ -4,19 +4,19 @@ description: Interfacing directly with the kernel
 
 # Syscalls
 
-### Overview
+### 概要
 
-A **syscall** is a **sys**tem **call**, and is how the program enters the kernel in order to carry out specific tasks such as creating processes, I/O and any others they would require kernel-level access.
+**syscall** は **sys**tem **call**(システムコール)の略で、プロセスの作成や I/O など、カーネルレベルのアクセスが必要な特定の処理を行うために、プログラムがカーネルに入る方法です。
 
-Browsing the [list of syscalls](https://chromium.googlesource.com/chromiumos/docs/+/master/constants/syscalls.md), you may notice that certain syscalls are similar to libc functions such as `open()`, `fork()` or `read()`; this is because these functions are simply wrappers _around_ the syscalls, making it much easier for the programmer.
+[syscall の一覧](https://chromium.googlesource.com/chromiumos/docs/+/master/constants/syscalls.md)を眺めると、`open()`、`fork()`、`read()` など、libc の関数に似た syscall があることに気づくでしょう。これは、それらの関数が syscall の_ラッパー_にすぎず、プログラマにとって使いやすくしているからです。
 
-### Triggering Syscalls
+### syscall の呼び出し
 
-On Linux, a syscall is triggered by the `int80` instruction. Once it's called, the kernel checks the value stored in RAX - this is the **syscall number**, which defines **what syscall gets run**. As per the table, the other parameters can be stored in RDI, RSI, RDX, etc and every parameter has a different meaning for the different syscalls.
+Linux では、syscall は `int80` 命令で呼び出されます。呼び出されると、カーネルは RAX に格納された値を確認します。これは**syscall 番号**で、**どの syscall を実行するか**を決めます。表にあるように、他のパラメータは RDI、RSI、RDX などに格納でき、各パラメータの意味は syscall ごとに異なります。
 
-### Execve
+### execve
 
-A notable syscall is the `execve` syscall, which executes the program passed to it in RDI. RSI and RDX hold `arvp` and `envp` respectively.
+注目すべき syscall が `execve` で、RDI に渡されたプログラムを実行します。RSI と RDX には、それぞれ `arvp` と `envp` が入ります。
 
-This means, if there is no `system()` function, we can use `execve` to call `/bin/sh` instead - all we have to do is pass in a pointer to `/bin/sh` to RDI, and populate RSI and RDX with `0` \(this is because both `argv` and `envp` need to be `NULL` to pop a shell\).
+つまり、`system()` 関数がなくても、代わりに `execve` で `/bin/sh` を呼び出せます。必要なのは、RDI に `/bin/sh` へのポインタを渡し、RSI と RDX に `0` を入れることだけです(シェルを起動するには `argv` と `envp` の両方が `NULL` である必要があるためです)。
 

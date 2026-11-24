@@ -1,10 +1,10 @@
 ---
-description: Random stuff I want to mention somewhere, but too small for its own page
+description: どこかで触れたいけれど、独立したページにするには小さすぎる雑多なこと
 ---
 
 # TODO
 
-Discuss `sched_yield` and CPU affinity.
+`sched_yield` と CPU アフィニティ(CPU affinity)について論じる。
 
-Kernel code gets patched at runtime (ch4)
+カーネルコードは実行時にパッチされる (ch4)
 

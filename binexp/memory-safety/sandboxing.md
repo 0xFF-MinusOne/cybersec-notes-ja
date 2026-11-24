@@ -1,21 +1,21 @@
-# Sandboxing
+# サンドボックス(Sandboxing)
 
-Sandboxing is a security mechanism for running untrusted code. The aim is to make a tightly-restricted, locked-down environment with minimal privileges, enforced by Operating System policies.
+サンドボックスは、信頼できないコードを実行するためのセキュリティ機構です。目的は、最小限の権限しか持たない、厳しく制限された閉じた環境を作ることで、これはオペレーティングシステムのポリシーによって強制されます。
 
-Inside the sandbox, access to sensitive resources - such as files, the network, devices, users or other processes - is restricted. This is a major part of the "[defence in depth](https://www.fortinet.com/uk/resources/cyberglossary/defense-in-depth)" philosophy, where we accept that vulnerabilities can occur despite our best efforts and we limit the potential impact of such vulnerabilities as much as possible.
+サンドボックスの内側では、ファイル、ネットワーク、デバイス、ユーザー、他のプロセスといった機密性の高いリソースへのアクセスが制限されます。これは「[多層防御(defence in depth)](https://www.fortinet.com/uk/resources/cyberglossary/defense-in-depth)」という考え方の重要な部分で、最善を尽くしても脆弱性は生じ得ると認めたうえで、そうした脆弱性の影響をできる限り小さく抑えるものです。
 
 ## Linux
 
-On Linux there are a handful of kernel-provided features. [Chromium](https://chromium.googlesource.com/chromium/src/+/0e94f26e8/docs/linux_sandboxing.md#user-namespaces-sandbox) uses [namespaces](https://man7.org/linux/man-pages/man7/namespaces.7.html) and [seccomp-bpf](https://www.kernel.org/doc/html/v4.19/userspace-api/seccomp_filter.html).
+Linux にはカーネルが提供する機能がいくつかあります。[Chromium](https://chromium.googlesource.com/chromium/src/+/0e94f26e8/docs/linux_sandboxing.md#user-namespaces-sandbox) は[名前空間(namespaces)](https://man7.org/linux/man-pages/man7/namespaces.7.html)と [seccomp-bpf](https://www.kernel.org/doc/html/v4.19/userspace-api/seccomp_filter.html) を使っています。
 
-### Namespaces
+### 名前空間(Namespaces)
 
-To quote the man pages,
+man ページから引用します。
 
-> A namespace wraps a global system resource in an abstraction that makes it appear to the processes within the namespace that they have their own isolated instance of the global resource. Changes to the global resource are visible to other processes that are members of the namespace, but are invisible to other processes.
+> 名前空間は、グローバルなシステムリソースを抽象化で包み、その名前空間内のプロセスから見ると、そのグローバルリソースの独立した専用のインスタンスを持っているように見せます。グローバルリソースへの変更は、その名前空間のメンバーである他のプロセスからは見えますが、それ以外のプロセスからは見えません。
 
-In effect, namespaces are kernel-provided and prevent anything in the namespace from accessing files, processes, networks, users or anything else outside the namespace. This stops processes inside the namespace from affecting anything _outside_ the namespace.
+要するに、名前空間はカーネルが提供する機能で、名前空間内のものが、その外にあるファイル、プロセス、ネットワーク、ユーザーなどにアクセスすることを防ぎます。これにより、名前空間内のプロセスが名前空間の_外_のものに影響を与えることを止められます。
 
 ### seccomp-bpf
 
-**Seccomp** filters system calls to only allow accepted ones, which has the effect of reducing attacker capabilities if they do get code execution.
+**Seccomp** はシステムコールをフィルタリングして許可したものだけを通します。これにより、攻撃者がコード実行を得たとしても、できることを減らせます。

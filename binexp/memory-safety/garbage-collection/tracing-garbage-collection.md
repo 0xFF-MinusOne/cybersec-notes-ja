@@ -1,2 +1,2 @@
-# Tracing Garbage Collection
+# トレーシングガベージコレクション(Tracing Garbage Collection)
 

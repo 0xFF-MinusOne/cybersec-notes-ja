@@ -1,30 +1,30 @@
 ---
-description: Address Space Layout Randomisation
+description: アドレス空間配置のランダム化(Address Space Layout Randomisation)
 ---
 
 # ASLR
 
-## Overview
+## 概要
 
-ASLR stands for **A**ddress **S**pace **L**ayout **R**andomisation and can, in most cases, be thought of as `libc`'s equivalent of PIE - every time you run a binary, `libc` \(and other libraries\) get loaded into a different memory address.
+ASLR は **A**ddress **S**pace **L**ayout **R**andomisation(アドレス空間配置のランダム化)の略で、たいていの場合、`libc` にとっての PIE に相当するものと考えられます。バイナリを実行するたびに、`libc`(や他のライブラリ)が異なるメモリアドレスにロードされます。
 
 {% hint style="danger" %}
-While it's tempting to think of ASLR as `libc` PIE, there is a key difference.
+ASLR を `libc` 版の PIE だと考えたくなりますが、重要な違いがあります。
 
-ASLR is a **kernel protection** while PIE is a binary protection. The main difference is that PIE can be **compiled into the binary** while the presence of ASLR is **completely dependant on the environment running the binary**. If I sent you a binary compiled with ASLR disabled while I did it, it wouldn't make any different at all if you had ASLR enabled.
+ASLR は**カーネルの保護機構**で、PIE はバイナリの保護機構です。主な違いは、PIE は**バイナリにコンパイルして組み込める**のに対し、ASLR が有効かどうかは**バイナリを実行する環境に完全に依存する**ことです。たとえば、私が ASLR を無効にした状態でコンパイルしたバイナリをあなたに送ったとしても、あなたの環境で ASLR が有効なら、まったく違いは生じません。
 {% endhint %}
 
-Of course, as with PIE, this means you cannot hardcode values such as function address \(e.g. `system` for a ret2libc\).
+もちろん PIE と同様、関数のアドレス(たとえば ret2libc 用の `system`)のような値をハードコードすることはできません。
 
-## The Format String Trap
+## 書式文字列の落とし穴(The Format String Trap)
 
-It's tempting to think that, as with PIE, we can simply format string for a libc address and subtract a static offset from it. Sadly, we can't quite do that.
+PIE のときと同じように、書式文字列(format string)で libc のアドレスをリークし、そこから固定のオフセットを引けばよいと考えたくなります。残念ながら、そう簡単にはいきません。
 
-When functions finish execution, they do not get removed from memory; instead, they just get ignored and overwritten. Chances are very high that you will grab one of these remnants with the format string. Different libc versions can act very differently during execution, so a value you just grabbed may not even _exist_ remotely, and if it does the offset will most likely be different \(different libcs have different sizes and therefore different offsets between functions\). It's possible to get lucky, but you shouldn't really hope that the offsets remain the same.
+関数は実行が終わってもメモリから消えるわけではなく、単に無視され、あとで上書きされるだけです。書式文字列で拾える値は、そうした残骸のひとつである可能性がとても高いです。libc のバージョンが違えば実行中の挙動も大きく異なり得るので、いま取得した値がリモートには_存在すらしない_こともありますし、存在したとしてもオフセットはおそらく異なります(libc ごとにサイズが違うため、関数間のオフセットも違います)。運よく一致することもありますが、オフセットが同じままだと期待すべきではありません。
 
-Instead, a more reliable way is reading the [GOT entry of a specific function](plt_and_got.md#s-format-string).
+それよりも確実な方法は、[特定の関数の GOT エントリ](plt_and_got.md#s-format-string)を読むことです。
 
-## Double-Checking
+## 再確認(Double-Checking)
 
-For the same reason as PIE, libc base addresses always end in the hexadecimal characters `000`.
+PIE と同じ理由で、libc のベースアドレスは常に 16 進数で `000` で終わります。
 

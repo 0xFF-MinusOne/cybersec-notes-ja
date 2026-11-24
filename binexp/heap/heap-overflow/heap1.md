@@ -4,7 +4,7 @@ description: 'http://exploit.education/phoenix/heap-one/'
 
 # heap1
 
-## Source
+## ソースコード
 
 ```c
 #include <stdio.h>
@@ -43,19 +43,19 @@ void winner() {
 }
 ```
 
-## Analysis
+## 解析
 
-This program:
+このプログラムは次のことを行います。
 
-* Allocates a chunk on the heap for the `heapStructure`
-* Allocates another chunk on the heap for the `name` of that `heapStructure`
-* Repeats the process with another `heapStructure`
-* Copies the two command-line arguments to the `name` variables of the `heapStructures`
-* Prints something
+* ヒープ上に `heapStructure` 用のチャンクを確保する
+* その `heapStructure` の `name` 用に、ヒープ上にもう 1 つチャンクを確保する
+* 別の `heapStructure` についても同じ処理を繰り返す
+* 2 つのコマンドライン引数を、それぞれの `heapStructure` の `name` 変数にコピーする
+* 何かを出力する
 
-### Regular Execution
+### 通常の実行
 
-Let's break on and after the first `strcpy`.
+最初の `strcpy` の直前と直後でブレークしましょう。
 
 ```text
 $ r2 -d -A heap1 AAAA BBBB
@@ -63,28 +63,28 @@ $ r2 -d -A heap1 AAAA BBBB
 
 ![](../../../.gitbook/assets/image%20%287%29.png)
 
-As we expected, we have two pairs of `heapStructure` and `name` chunks. We know the `strcpy` will be copying into wherever `name` points, so let's read the contents of the first `heapStructure`. Maybe this will give us a clue.
+予想どおり、`heapStructure` と `name` のチャンクのペアが 2 組あります。`strcpy` は `name` が指す先にコピーすることが分かっているので、最初の `heapStructure` の内容を読んでみましょう。何かヒントが得られるかもしれません。
 
 ![](../../../.gitbook/assets/image%20%288%29.png)
 
-Look! The `name` pointer points to the `name` chunk! You can see the value `0x602030` being stored.
+見てください。`name` ポインタが `name` チャンクを指しています。`0x602030` という値が格納されているのが分かります。
 
-This isn't particularly a revelation in itself - after all, we **knew** there was a pointer in the chunk. But now we're certain, and we can _definitely_ overwrite this pointer due to the lack of bounds checking. And because we can also control the value being **written**, this essentially gives us an arbitrary write!
+これ自体は特に新しい発見ではありません。チャンクの中にポインタがあることは**分かっていた**からです。しかし、これで確証が得られました。境界チェックがないため、このポインタを_確実に_上書きできます。さらに**書き込まれる**値も制御できるので、これは実質的に任意書き込み(arbitrary write)になります。
 
-And where better to target than the GOT?
+では、狙う場所として GOT 以上にふさわしいものがあるでしょうか。
 
-## Exploitation
+## エクスプロイト
 
-The plan, therefore, becomes:
+したがって、計画は次のようになります。
 
-* Pad until the location of the pointer
-* Overwrite the pointer with the GOT address of a function
-* Set the second parameter to the address of `winner`
-* Next time the function is called, it will call `winner` 
+* ポインタの位置までパディングする
+* ポインタを、ある関数の GOT アドレスで上書きする
+* 2 番目の引数を `winner` のアドレスに設定する
+* 次にその関数が呼ばれたときに、`winner` が呼ばれる
 
-But what function should we overwrite? The only function called after the `strcpy` is `printf`, according to the source code. And if we overwrite `printf` with `winner` it'll just recursively call itself forever.
+では、どの関数を上書きすればよいでしょうか。ソースコードによると、`strcpy` の後に呼ばれる関数は `printf` だけです。しかし `printf` を `winner` で上書きすると、`winner` 内の `printf` から自分自身を再帰的に呼び続けてしまいます。
 
-Luckily, compilers like `gcc` compile `printf` as `puts` if there are no parameters - we can see this with radare2:
+幸い、`gcc` のようなコンパイラは、引数がない `printf` を `puts` としてコンパイルします。radare2 で確認できます。
 
 ```text
 $ r2 -d -A heap1
@@ -95,7 +95,7 @@ $ s main; pdf
 0x004006f0      e8fbfdffff     call sym.imp.puts
 ```
 
-So we can simply overwrite the GOT address of `puts` with `winner`. All we need to find now is the padding until the pointer and then we're good to go.
+したがって、`puts` の GOT アドレスを `winner` で上書きすればよいことになります。あとはポインタまでのパディングを調べれば準備完了です。
 
 ```text
 $ ragg2 -P 200 -r
@@ -106,20 +106,20 @@ AABAA...
 $ r2 -d -A heap1 AAABAA... 0000
 ```
 
-Break on and after the `strcpy` again and analyse the second chunk's `name` pointer.
+もう一度 `strcpy` の直前と直後でブレークし、2 番目のチャンクの `name` ポインタを解析します。
 
 ![](../../../.gitbook/assets/image%20%286%29.png)
 
-The pointer is originally at `0x8d9050`; once the strcpy occurs, the value there is `0x41415041414f4141`.
+ポインタは元々 `0x8d9050` にあり、strcpy が実行されると、そこの値は `0x41415041414f4141` になります。
 
 ```text
 [0x004006cd]> wopO 0x41415041414f4141
 40
 ```
 
-The offset is **40**.
+オフセットは **40** です。
 
-### Final Exploit
+### 最終的なエクスプロイト
 
 ```python
 from pwn import *
@@ -134,5 +134,5 @@ p = elf.process(argv=[param1, param2])
 print(p.clean().decode('latin-1'))
 ```
 
-Again, null bytes aren't allowed in parameters so you have to remove them.
+ここでも、引数にはヌルバイトを含められないため、取り除く必要があります。
 

@@ -1,14 +1,14 @@
 ---
-description: Creating more heap space
+description: ヒープ領域を増やす
 ---
 
-# The Top Chunk and Remainder
+# top chunk と remainder
 
-Also known as the **wilderness**, the **top chunk** is the final chunk in the heap. The size of the top chunk is equal to the size of the free heap space.
+**wilderness** とも呼ばれる **top chunk** は、ヒープの最後のチャンクです。top chunk のサイズは、ヒープの空き領域のサイズと等しくなります。
 
-\[TODO image here]
+\[TODO ここに画像]
 
-If a new chunk is allocated and there are no free chunks suitable, the top chunk shrinks and is pushed back to make space for the new heap. The use of the top is triggered [here](https://elixir.bootlin.com/glibc/glibc-2.26/source/malloc/malloc.c#L3983), and the actual logic can be found [here](https://elixir.bootlin.com/glibc/glibc-2.26/source/malloc/malloc.c#L4069):
+新しいチャンクを確保するときに、適切な解放済みチャンクがなければ、top chunk は縮小され、新しいヒープ領域のために後ろへ押しやられます。top の使用は[ここ](https://elixir.bootlin.com/glibc/glibc-2.26/source/malloc/malloc.c#L3983)で始まり、実際のロジックは[ここ](https://elixir.bootlin.com/glibc/glibc-2.26/source/malloc/malloc.c#L4069)にあります。
 
 ```c
 victim = av->top;
@@ -30,6 +30,6 @@ if ((unsigned long) (size) >= (unsigned long) (nb + MINSIZE))
   }
 ```
 
-If the `size` of the requested chunk is less than or equal to the size of the top chunk, it is broken into two chunks - the return chunk (located where the top chunk was previously) and the **remainder** chunk, which is the new top chunk with a reduced size.
+要求されたチャンクの `size` が top chunk のサイズ以下であれば、top chunk は 2 つのチャンクに分割されます。返されるチャンク(以前 top chunk があった場所に位置します)と、サイズが小さくなった新しい top chunk である **remainder** チャンクです。
 
-If the size is greater than the top chunk can handle, glibc attempts to consolidate fastbins. If there are no fastbins (or there's still not enough space), we [default to `sysmalloc`](https://elixir.bootlin.com/glibc/glibc-2.26/source/malloc/malloc.c#L4120), which calls [`mmap`](https://elixir.bootlin.com/glibc/glibc-2.26/source/malloc/malloc.c#L2312) (on systems that have it).
+要求サイズが top chunk の処理できる大きさを超えている場合、glibc は fastbin の統合を試みます。fastbin がない(または統合してもまだ領域が足りない)場合は、[デフォルトで `sysmalloc`](https://elixir.bootlin.com/glibc/glibc-2.26/source/malloc/malloc.c#L4120) に進み、(対応しているシステムでは)[`mmap`](https://elixir.bootlin.com/glibc/glibc-2.26/source/malloc/malloc.c#L2312) を呼び出します。

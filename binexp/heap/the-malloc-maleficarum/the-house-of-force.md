@@ -1,18 +1,18 @@
 ---
-description: Exploiting the wilderness
+description: wilderness を悪用する
 ---
 
 # The House of Force
 
-<table data-header-hidden><thead><tr><th width="283"></th><th></th></tr></thead><tbody><tr><td>Glibc Version</td><td>*-<a href="https://elixir.bootlin.com/glibc/glibc-2.29/source/malloc/malloc.c#L4114">2.29</a></td></tr><tr><td>Primitive Required</td><td><ul><li>Heap overflow into the top chunk</li><li>Chunk allocation of arbitrary size</li></ul></td></tr><tr><td>Primitive Gained</td><td><ul><li>Arbitrary Write</li></ul></td></tr></tbody></table>
+<table data-header-hidden><thead><tr><th width="283"></th><th></th></tr></thead><tbody><tr><td>Glibc のバージョン</td><td>*-<a href="https://elixir.bootlin.com/glibc/glibc-2.29/source/malloc/malloc.c#L4114">2.29</a></td></tr><tr><td>必要なプリミティブ</td><td><ul><li>top chunk へのヒープオーバーフロー</li><li>任意のサイズのチャンクの確保</li></ul></td></tr><tr><td>得られるプリミティブ</td><td><ul><li>任意書き込み(Arbitrary Write)</li></ul></td></tr></tbody></table>
 
-In the House of Force, we overflow the `size` field of the [top chunk](../the-top-chunk-and-remainder.md) with a huge value. We next allocate a **huge** chunk size. Due to the size overwrite, we bypass the [top size check](https://elixir.bootlin.com/glibc/glibc-2.26/source/malloc/malloc.c#L4088):
+House of Force では、[top chunk](../the-top-chunk-and-remainder.md) の `size` フィールドを巨大な値でオーバーフローさせます。次に、**巨大な**サイズのチャンクを確保します。サイズを上書きしてあるため、[top chunk のサイズチェック](https://elixir.bootlin.com/glibc/glibc-2.26/source/malloc/malloc.c#L4088)をすり抜けられます。
 
 ```c
 if ((unsigned long) (size) >= (unsigned long) (nb + MINSIZE))
 ```
 
-Because the check is passed, the we trick glibc into allocating the large request to the heap rather than use `mmap()`. This gives us a lot of control over the **remainder chunk**:
+チェックを通過するので、glibc をだまして、`mmap()` を使わずにヒープ上でその大きな要求を処理させることができます。これにより、**remainder チャンク**を大きく制御できるようになります。
 
 ```c
 remainder_size = size - nb;
@@ -20,32 +20,32 @@ remainder = chunk_at_offset (victim, nb);
 av->top = remainder;
 ```
 
-Note that if we can control the allocation size (the `nb` variable here), we pass that size to [`chunk_at_offset()`](https://elixir.bootlin.com/glibc/glibc-2.26/source/malloc/malloc.c#L1300):
+確保サイズ(ここでは `nb` 変数)を制御できる場合、そのサイズが [`chunk_at_offset()`](https://elixir.bootlin.com/glibc/glibc-2.26/source/malloc/malloc.c#L1300) に渡されることに注意してください。
 
 ```c
 /* Treat space at ptr + offset as a chunk */
 #define chunk_at_offset(p, s)  ((mchunkptr) (((char *) (p)) + (s)))
 ```
 
-This macro takes the address and adds `nb` onto it - but because we have control over `nb`, we can **control where the remainder chunk is placed**, and therefore **where the next top chunk is located**. This means that the **next** allocation can be located at an address of our choice!
+このマクロはアドレスに `nb` を加算します。しかし `nb` を制御できるため、**remainder チャンクが置かれる場所**、したがって**次の top chunk の位置**を制御できます。つまり、**次の**確保が、好きなアドレスに配置されることになります。
 
 {% hint style="info" %}
-Note that we can even write to addresses **ahead** of the heap in memory by triggering an **integer overflow**!
+**整数オーバーフロー**を引き起こせば、メモリ上でヒープより**手前**にあるアドレスにも書き込めることに注意してください。
 {% endhint %}
 
-&#x20;TODO mathematics
+&#x20;TODO 数学的な説明
 
-TODO source
+TODO ソースコード
 
-TODO patch
+TODO パッチ
 
-## The Patch
+## パッチ
 
-In glibc 2.29, there is a [new security check](https://elixir.bootlin.com/glibc/glibc-2.29/source/malloc/malloc.c#L4114) to protect against the House of Force:
+glibc 2.29 では、House of Force を防ぐための[新しいセキュリティチェック](https://elixir.bootlin.com/glibc/glibc-2.29/source/malloc/malloc.c#L4114)が追加されました。
 
 ```c
 if (__glibc_unlikely (size > av->system_mem))
     malloc_printerr ("malloc(): corrupted top size");
 ```
 
-Very simple - check if the size is ridiculously large, and throw an error if so.
+とても単純で、サイズが途方もなく大きくないかを確認し、大きければエラーを出します。

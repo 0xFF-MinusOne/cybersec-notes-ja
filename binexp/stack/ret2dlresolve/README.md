@@ -1,32 +1,32 @@
 ---
-description: Resolving our own libc functions
+description: 独自に libc の関数を解決する
 ---
 
 # ret2dlresolve
 
 ## Broad Overview
 
-During a ret2dlresolve, the attacker tricks the binary into resolving a function of its choice (such as `system`) into the PLT. This then means the attacker can use the PLT function as if it was originally part of the binary, bypassing ASLR (if present) and requiring no libc leaks.
+ret2dlresolve では、攻撃者はバイナリをだまして、選んだ関数(`system` など)を PLT に解決させます。これにより攻撃者は、その PLT 関数を、もともとバイナリの一部だったかのように使え、(存在する場合は)ASLR を回避でき、libc のリークも不要になります。
 
 ## Detailed Overview
 
-Dynamically-linked ELF objects import `libc` functions when they are first called using the PLT and GOT. During the relocation of a runtime symbol, RIP will jump to the PLT and attempt to resolve the symbol. During this process a "resolver" is called.
+動的にリンクされた ELF オブジェクトは、PLT と GOT を使って、`libc` の関数を最初に呼ばれたときにインポートします。実行時のシンボルの再配置(relocation)の際に、RIP は PLT にジャンプし、シンボルを解決しようとします。この過程で「リゾルバ(resolver)」が呼び出されます。
 
 {% hint style="info" %}
-For all these screenshots, I broke at `read@plt`. I'm using GDB with the `pwndbg` plugin as it shows it a bit better.
+以下のスクリーンショットではすべて、`read@plt` で停止させています。表示が少し見やすいので、`pwndbg` プラグイン付きの GDB を使っています。
 {% endhint %}
 
 ![](<../../../.gitbook/assets/image (41).png>)
 
-The PLT jumps to wherever the GOT points. Originally, before the GOT is updated, it points back to the instruction after the `jmp` in the PLT to resolve it.
+PLT は、GOT が指す先へジャンプします。GOT が更新される前は、最初は PLT 内の `jmp` の次の命令を指し戻しており、それによって解決が行われます。
 
 ![](<../../../.gitbook/assets/image (35).png>)
 
-In order to resolve the functions, there are 3 structures that need to exist within the binary. Faking these 3 structures could enable us to trick the linker into resolving a function of our choice, and we can also pass parameters in (such as `/bin/sh`) once resolved.
+関数を解決するには、バイナリ内に3つの構造体が存在する必要があります。この3つの構造体を偽造すれば、リンカをだまして選んだ関数を解決させられ、解決後には(`/bin/sh` などの)パラメータも渡せます。
 
 ## Structures
 
-There are 3 structures we need to fake.
+偽造する必要のある構造体は3つあります。
 
 ```
 $readelf -d source
@@ -41,7 +41,7 @@ Dynamic section at offset 0x2f14 contains 24 entries:
 
 ### JMPREL
 
-The `JMPREL` segment (`.rel.plt`) stores the **Relocation Table**, which maps each entry to a symbol.
+`JMPREL` セグメント(`.rel.plt`)には **再配置テーブル(Relocation Table)** が格納されており、各エントリをシンボルに対応づけます。
 
 ```
 $readelf -r source
@@ -56,7 +56,7 @@ Relocation section '.rel.plt' at offset 0x2d8 contains 2 entries:
 0804c010  00000307 R_386_JUMP_SLOT   00000000   __libc_start_main@GLIBC_2.0
 ```
 
-These entries are of type `Elf32_Rel`:
+これらのエントリは `Elf32_Rel` 型です。
 
 ```c
 typedef uint32_t Elf32_Addr;
@@ -71,19 +71,19 @@ typedef struct
 #define ELF32_R_TYPE(val)               ((val) & 0xff)
 ```
 
-The column `name` corresponds to our symbol name. The `offset` is the GOT entry for our symbol. `info` stores additional metadata.
+`name` 列はシンボル名に対応します。`offset` はそのシンボルの GOT エントリです。`info` には追加のメタデータが格納されています。
 
-Note the due to this the `R_SYM` of `gets` is `1` as `0x107 >> 8 = 1`.
+これにより、`gets` の `R_SYM` は `1` になります。`0x107 >> 8 = 1` だからです。
 
 ### STRTAB
 
-Much simpler - just a table of strings for the names.
+こちらはもっと単純で、名前用の文字列テーブルにすぎません。
 
-![0x0804825c is the location of STRTAB we got earlier](<../../../.gitbook/assets/image (36).png>)
+![先ほど取得した STRTAB の位置が 0x0804825c です](<../../../.gitbook/assets/image (36).png>)
 
 ### SYMTAB
 
-Symbol information is stores here in an `Elf32_Sym` struct:
+シンボル情報は、ここに `Elf32_Sym` 構造体として格納されています。
 
 ```c
 typedef struct 
@@ -97,27 +97,27 @@ typedef struct
 } Elf32_Sym ;
 ```
 
-The most important value here is `st_name` as this gives the **offset in STRTAB of the symbol name**. The other fields are not relevant to the exploit itself.
+ここで最も重要な値は `st_name` で、**シンボル名の STRTAB 内でのオフセット** を示します。そのほかのフィールドは、エクスプロイト自体には関係ありません。
 
 ## Linking the Structures
 
-We now know we can get the `STRTAB` offset of the symbol's string using the `R_SYM` value we got from the `JMPREL`, combined with `SYMTAB`:
+`JMPREL` から得た `R_SYM` の値と `SYMTAB` を組み合わせれば、シンボルの文字列の `STRTAB` オフセットが得られることが分かりました。
 
 ![](<../../../.gitbook/assets/image (40).png>)
 
-Here we're reading `SYMTAB + R_SYM * size (16)`, and it appears that the offset (the `SYMTAB` `st_name` variable) is `0x10`.
+ここでは `SYMTAB + R_SYM * size (16)` を読んでおり、そのオフセット(`SYMTAB` の `st_name` 変数)は `0x10` のようです。
 
 ![](<../../../.gitbook/assets/image (44).png>)
 
-And if we read that offset on `STRTAB`, we get the symbol's name!
+そして、そのオフセットを `STRTAB` で読むと、シンボルの名前が得られます。
 
 ## More on the PLT and GOT
 
-Let's hop back to the GOT and PLT for a slightly more in-depth look.
+GOT と PLT に戻って、もう少し詳しく見てみましょう。
 
 ![](<../../../.gitbook/assets/image (38).png>)
 
-If the GOT entry is unpopulated, we push the `reloc_offset` value and jump to the beginning of the `.plt` section. A few instructions later, the `dl-resolve()` function is called, with `reloc_offset` being one of the arguments. It then uses this `reloc_offset` to calculate the **relocation and symtab entries**.
+GOT のエントリがまだ設定されていなければ、`reloc_offset` の値を push し、`.plt` セクションの先頭へジャンプします。数命令後に `dl-resolve()` 関数が呼ばれ、`reloc_offset` がその引数の1つになります。そして、この `reloc_offset` を使って、**再配置エントリと symtab エントリ** を計算します。
 
 ## Resources
 

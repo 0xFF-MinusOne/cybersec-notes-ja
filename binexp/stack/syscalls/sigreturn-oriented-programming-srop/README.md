@@ -4,13 +4,12 @@ description: Controlling all registers at once
 
 # Sigreturn-Oriented Programming \(SROP\)
 
-### Overview
+### 概要
 
-A **sigreturn** is a special type of [syscall](../). The purpose of sigreturn is to return from the **signal handler** and to clean up the stack frame after a signal has been unblocked.
+**sigreturn** は特別な種類の [syscall](../) です。sigreturn の目的は、**シグナルハンドラ**から戻り、シグナルのブロックが解除された後でスタックフレームをクリーンアップすることです。
 
-What this involves is storing _all_ the register values on the stack. Once the signal is unblocked, all the values are popped back in \(RSP points to the bottom of the **sigreturn frame**, this collection of register values\).
+そのために、レジスタの値を_すべて_スタックに保存します。シグナルのブロックが解除されると、すべての値が元に pop されます(RSP は、このレジスタ値の集まりである**sigreturn フレーム**の末尾を指します)。
 
 ### Exploitation
 
-By leveraging a `sigreturn`, we can control _all register values at once_ - amazing! Yet this is also a drawback - we can't pick-and-choose registers, so if we don't have a stack leak it'll be hard to set registers like RSP to a workable value. Nevertheless, this is a super powerful technique - especially with limited gadgets.
-
+`sigreturn` を利用すると、_すべてのレジスタの値を一度に_制御できます。素晴らしいですね。ただし、これは欠点でもあります。レジスタを選んで設定することはできないため、スタックのリークがないと、RSP のようなレジスタを使える値に設定するのは難しくなります。それでも、特にガジェットが限られている場合に、非常に強力な手法です。

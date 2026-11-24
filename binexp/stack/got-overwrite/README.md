@@ -1,10 +1,10 @@
 ---
-description: Hijacking functions
+description: 関数のハイジャック
 ---
 
 # GOT Overwrite
 
-You may remember that the GOT stores the actual locations in `libc` of functions. Well, if we could overwrite an entry, we could gain code execution that way. Imagine the following code:
+GOT には `libc` 内の関数の実際のアドレスが格納されていることを覚えているでしょうか。であれば、そのエントリを上書きできれば、それによってコード実行を得られます。次のコードを考えてみましょう。
 
 ```c
 char buffer[20];
@@ -12,7 +12,7 @@ gets(buffer);
 printf(buffer);
 ```
 
-Not only is there a buffer overflow and format string vulnerability here, but say we used that format string to overwrite the GOT entry of `printf` with the location of `system`. The code would essentially look like the following:
+ここにはバッファオーバーフロー(buffer overflow)とフォーマット文字列(format string)の脆弱性の両方があります。さらに、そのフォーマット文字列を使って `printf` の GOT エントリを `system` のアドレスで上書きしたとします。すると、コードは実質的に次のようになります。
 
 ```c
 char buffer[20];
@@ -20,5 +20,4 @@ gets(buffer);
 system(buffer);
 ```
 
-Bit of an issue? Yes. Our input is being passed directly to `system`.
-
+ちょっとまずいですよね。そうです、入力がそのまま `system` に渡されてしまいます。

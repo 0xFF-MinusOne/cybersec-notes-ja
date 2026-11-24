@@ -1,16 +1,16 @@
 ---
-description: A more useful way to interact with the driver
+description: ドライバとやり取りするための、より便利な方法
 ---
 
 # Interactivity with IOCTL
 
-Linux contains a syscall called `ioctl`, which is often used to communicate with a driver. `ioctl()` takes three parameters:
+Linux には `ioctl` というシステムコールがあり、ドライバとの通信によく使われます。`ioctl()` は 3 つの引数を取ります。
 
-* File Descriptor `fd`
-* an `unsigned int`
-* an `unsigned long`
+* ファイルディスクリプタ `fd`
+* `unsigned int`
+* `unsigned long`
 
-The driver can be adapted to make the latter two virtually anything - perhaps a pointer to a struct or a string. In the driver source, the code looks along the lines of:
+後ろの 2 つは、ドライバ側で、ほぼ何にでも合わせられます。構造体へのポインタや文字列などです。ドライバのソースでは、おおよそ次のようなコードになります。
 
 ```c
 static ssize_t ioctl_handler(struct file *file, unsigned int cmd, unsigned long arg) {
@@ -20,9 +20,9 @@ static ssize_t ioctl_handler(struct file *file, unsigned int cmd, unsigned long 
 }
 ```
 
-But if you want, you can interpret `cmd` and `arg` as pointers if that is how you wish your driver to work.
+ただし、ドライバをそのように動かしたければ、`cmd` と `arg` をポインタとして解釈することもできます。
 
-To communicate with the driver in this case, you would use the `ioctl()` function, which you can import in C:
+この場合にドライバと通信するには、C でインポートできる `ioctl()` 関数を使います。
 
 ```c
 #include <sys/ioctl.h>
@@ -32,7 +32,7 @@ To communicate with the driver in this case, you would use the `ioctl()` functio
 ioctl(fd, 0x100, 0x12345678);    // data is a string
 ```
 
-And you would have to update the `file_operations` struct:
+そして、`file_operations` 構造体も更新する必要があります。
 
 ```c
 static struct file_operations fops = {
@@ -40,7 +40,7 @@ static struct file_operations fops = {
 };
 ```
 
-On modern Linux kernel versions, [`.ioctl` has been removed and replaced by `.unlocked_ioctl` and `.compat_ioctl`](https://lwn.net/Articles/119652/). The former is the replacement for `.ioctl`, with the latter allowing 32-bit processes to perform `ioctl` calls on 64-bit systems. As a result, the new `file_operations` is likely to look more like this:
+最近の Linux カーネルでは、[`.ioctl` は削除され、`.unlocked_ioctl` と `.compat_ioctl` に置き換えられました](https://lwn.net/Articles/119652/)。前者が `.ioctl` の後継で、後者は 32 ビットのプロセスが 64 ビットシステム上で `ioctl` を呼べるようにするものです。そのため、新しい `file_operations` は、次のような形になることが多いでしょう。
 
 ```c
 static struct file_operations fops = {

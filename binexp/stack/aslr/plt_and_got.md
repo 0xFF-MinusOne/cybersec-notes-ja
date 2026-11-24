@@ -1,53 +1,53 @@
 ---
-description: Bypassing ASLR
+description: ASLR のバイパス
 ---
 
-# PLT and GOT
+# PLT と GOT
 
-The PLT and GOT are sections within an ELF file that deal with a large portion of the **dynamic linking**. Dynamically linked binaries are more common than statically linked binary in CTFs. The purpose of **dynamic linking** is that binaries do not have to carry all the code necessary to run within them - this reduces their size substantially. Instead, they rely on system libraries (especially `libc`, the C standard library) to provide the bulk of the functionality.\
-For example, each ELF file will not carry their own version of `puts` compiled within it - it will instead dynamically link to the `puts` of the system it is on. As well as smaller binary sizes, this also means the user can continually upgrade their libraries, instead of having to redownload all the binaries every time a new version comes out.
+PLT と GOT は ELF ファイル内のセクションで、**動的リンク(dynamic linking)**の大部分を担っています。CTF では、静的リンクされたバイナリよりも動的リンクされたバイナリのほうが一般的です。**動的リンク**の目的は、バイナリが実行に必要なコードをすべて自前で抱えなくてよくすることで、これによりサイズが大幅に小さくなります。代わりに、機能の大部分をシステムライブラリ(特に C 標準ライブラリである `libc`)に頼ります。\
+たとえば、各 ELF ファイルが自前の `puts` をコンパイルして抱えているわけではなく、動作しているシステムの `puts` に動的にリンクします。バイナリが小さくなるだけでなく、新しいバージョンが出るたびにすべてのバイナリを再ダウンロードしなくても、ユーザーがライブラリを継続的にアップグレードできるという利点もあります。
 
-#### So when it's on a new system, it replaces function calls with hardcoded addresses?
+#### では、新しいシステムでは、関数呼び出しをハードコードされたアドレスに置き換えるのでしょうか?
 
-Not quite.
+そうではありません。
 
-The problem with this approach is it requires `libc` to have a constant base address, i.e. be loaded in the same area of memory every time it's run, but remember that [_**ASLR**_](https://en.wikipedia.org/wiki/Address_space_layout_randomization) exists. Hence the need for _dynamic_ linking. Due to the way ASLR works, these addresses need to be resolved _every time the binary is run_. Enter the PLT and GOT.
+この方法の問題は、`libc` のベースアドレスが一定、つまり実行のたびに同じメモリ領域にロードされる必要があることですが、[_**ASLR**_](https://en.wikipedia.org/wiki/Address_space_layout_randomization) が存在することを思い出してください。だからこそ_動的_リンクが必要になります。ASLR の仕組み上、これらのアドレスは_バイナリを実行するたびに_解決しなければなりません。ここで登場するのが PLT と GOT です。
 
-## The PLT and GOT
+## PLT と GOT
 
-The PLT (**Procedure Linkage Table**) and GOT (**Global Offset Table**) work together to perform the linking.
+PLT(**Procedure Linkage Table**)と GOT(**Global Offset Table**)は連携してリンクを行います。
 
-When you call `puts()` in C and compile it as an ELF executable, it is not _actually_ `puts()` - instead, it gets compiled as `puts@plt`. Check it out in GDB:
+C で `puts()` を呼び出して ELF 実行ファイルとしてコンパイルすると、それは_実際には_ `puts()` ではなく、`puts@plt` としてコンパイルされます。GDB で確認してみましょう。
 
 ![](../../../.gitbook/assets/puts_plt.png)
 
-Why does it do that?
+なぜそうなるのでしょうか?
 
-Well, as we said, it doesn't know where `puts` actually is - so it jumps to the PLT entry of `puts` instead. From here, `puts@plt` does some very specific things:
+先ほど述べたとおり、`puts` が実際にどこにあるかを知らないので、代わりに `puts` の PLT エントリへジャンプします。そこから `puts@plt` は、次のような特定の処理を行います。
 
-* If there is a GOT entry for `puts`, it jumps to the address stored there.
-* If there isn't a GOT entry, it will resolve it and jump there.
+* `puts` の GOT エントリがあれば、そこに格納されているアドレスへジャンプする。
+* GOT エントリがなければ、解決してからそこへジャンプする。
 
-The GOT is a _massive_ table of addresses; these addresses are the actual locations in memory of the `libc` functions. `puts@got`, for example, will contain the address of `puts` in memory. When the PLT gets called, it reads the GOT address and redirects execution there. If the address is empty, it coordinates with the `ld.so` (also called the **dynamic linker/loader**) to get the function address and stores it in the GOT. This is done by calling `_dl_runtime_resolve` (this is explained in more detail in the [ret2dlresolve](../ret2dlresolve/) section).
+GOT は_巨大な_アドレスのテーブルで、そのアドレスは `libc` 関数がメモリ上に実際に存在する場所です。たとえば `puts@got` には、メモリ上の `puts` のアドレスが入っています。PLT が呼ばれると GOT のアドレスを読み、実行をそこへリダイレクトします。アドレスが空の場合は、`ld.so`(**動的リンカ/ローダ(dynamic linker/loader)**とも呼ばれます)と連携して関数のアドレスを取得し、GOT に格納します。これは `_dl_runtime_resolve` を呼ぶことで行われます(詳しくは [ret2dlresolve](../ret2dlresolve/) のセクションで説明します)。
 
-## How is this useful for binary exploitation?
+## バイナリエクスプロイトでどう役立つのか
 
-Well, there are two key takeaways from the above explanation:
+上の説明から、重要なポイントが 2 つあります。
 
-* Calling the PLT address of a function is equivalent to calling the function itself
-* The GOT address contains addresses of functions in `libc`, and the GOT is within the binary.
+* 関数の PLT アドレスを呼ぶことは、その関数自体を呼ぶのと等価である
+* GOT のアドレスには `libc` 内の関数のアドレスが入っており、GOT はバイナリ内にある
 
-The use of the first point is clear - if we have a PLT entry for a desirable `libc` function, for example `system`, we can just redirect execution to its PLT entry and it will be the equivalent of calling `system` directly; no need to jump into `libc`.
+1 つ目の利点は明らかです。`system` のような目的の `libc` 関数の PLT エントリがあれば、そこへ実行をリダイレクトするだけで `system` を直接呼ぶのと同じことになります。`libc` の中へジャンプする必要はありません。
 
-The second point is less obvious, but debatably even more important. As the GOT is part of the binary, it will always be a constant offset away from the base. Therefore, if PIE is disabled or you somehow leak the binary base, you know the exact address that contains a `libc` function's address. If you perhaps have an arbitrary read, it's trivial to leak the real address of the `libc` function and therefore bypass ASLR.
+2 つ目はそれほど明らかではありませんが、おそらくさらに重要です。GOT はバイナリの一部なので、ベースからのオフセットは常に一定です。したがって、PIE が無効であるか、何らかの方法でバイナリのベースをリークできれば、`libc` 関数のアドレスが格納されている正確なアドレスがわかります。任意読み取り(arbitrary read)があれば、その `libc` 関数の実際のアドレスをリークするのは簡単で、ASLR をバイパスできます。
 
-## Exploiting an Arbitrary Read
+## 任意読み取りの悪用
 
-There are two main ways that one can exploit an arbitrary read for a stack exploit. Note that these approaches will cause not only the GOT entry to be return but _everything else until a null byte is reached_ as well, due to strings in C being null-terminated; make sure you only take the required number of bytes.
+スタックのエクスプロイトで任意読み取りを悪用する主な方法は 2 つあります。C の文字列は null で終端されるため、これらの方法では GOT エントリだけでなく、_null バイトに達するまでのそれ以外のすべて_も返されます。必要なバイト数だけを取り出すようにしてください。
 
 ### ret2plt
 
-A **ret2plt** is a common technique that involves calling `puts@plt` and passing the GOT entry of puts as a parameter. This causes `puts` to print out its own address in `libc`. You then set the return address to the function you are exploiting in order to call it again and enable you to
+**ret2plt** は一般的な手法で、`puts@plt` を呼び出し、puts の GOT エントリをパラメータとして渡します。これにより `puts` は、自分自身の `libc` 内のアドレスを出力します。続けて、戻りアドレスをエクスプロイト対象の関数に設定してもう一度それを呼び出せるようにし、
 
 ```python
 # 32-bit ret2plt
@@ -69,12 +69,12 @@ payload = flat(
 ```
 
 {% hint style="info" %}
-`flat()` packs all the values you give it with `p32()` and `p64()` (depending on context) and concatenates them, meaning you don't have to write the packing functions out all the time
+`flat()` は、渡したすべての値を(状況に応じて)`p32()` や `p64()` でパックして連結します。そのため、パック関数をいちいち書かなくて済みます。
 {% endhint %}
 
 ### %s format string
 
-This has the same general theory but is useful when you have limited stack space or a ROP chain would alter the stack in such a way to complicate future payloads, for example when stack pivoting.
+理論は同じですが、スタックの空きが限られている場合や、ROP チェーンがスタックを変化させて以降のペイロードを複雑にしてしまう場合(たとえば stack pivoting のとき)に役立ちます。
 
 ```python
 payload = p32(elf.got['puts'])      # p64() if 64-bit
@@ -93,10 +93,10 @@ p.recvuntil(b'|')                   # This is not required
 puts_leak = u32(p.recv(4))          # 4 bytes because it's 32-bit
 ```
 
-## Summary
+## まとめ
 
-* The PLT and GOT do the bulk of static linking
-* The PLT resolves actual locations in `libc` of functions you use and stores them in the GOT
-  * Next time that function is called, it reads the address in GOT entry and calls it
-* Calling `function@plt` is equivalent to calling the function itself
-* An arbitrary read enables you to read the GOT and thus bypass ASLR by calculating `libc` base
+* PLT と GOT は動的リンクの大部分を担う
+* PLT は、使用する関数の `libc` 内の実際の場所を解決し、GOT に格納する
+  * 次にその関数が呼ばれたときは、GOT エントリのアドレスを読み、それを呼び出す
+* `function@plt` を呼ぶことは、その関数自体を呼ぶのと等価である
+* 任意読み取りがあれば GOT を読めるので、`libc` のベースを計算して ASLR をバイパスできる

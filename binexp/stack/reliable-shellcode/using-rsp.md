@@ -25,15 +25,15 @@ int main() {
 }
 ```
 
-You can ignore most of it as it's mostly there to accomodate the existence of `jmp rsp` - we don't actually want it called, so there's a negative `if` statement.
+ほとんどは `jmp rsp` を存在させるための部分なので、無視して構いません。実際には呼びたくないので、条件が成立しない `if` 文になっています。
 
 {% hint style="info" %}
-The chance of `jmp esp` gadgets existing in the binary are incredible low, but what you often do instead is find a _sequence of bytes that code for jmp rsp_ and jump there - `jmp rsp` is `\xff\xe4` in shellcode, so if there's is any part of the executable section with bytes in this order, they can be used as if they are a `jmp rsp`.
+バイナリ内に `jmp esp` ガジェットが存在する可能性は極めて低いのですが、代わりによく行うのは、_`jmp rsp` に相当するバイト列_ を探して、そこへジャンプすることです。シェルコードでは `jmp rsp` は `\xff\xe4` なので、実行可能セクションのどこかにこの順番のバイト列があれば、それを `jmp rsp` であるかのように使えます。
 {% endhint %}
 
 ## Exploitation
 
-Try to do this yourself first, using the explanation on the previous page. Remember, RSP points at the thing _after_ the return pointer once `ret` has occured, so your shellcode goes _after_ it.
+前のページの説明を使って、まず自分でやってみてください。`ret` が実行された後、RSP はリターンポインタの _次_ にあるものを指すので、シェルコードはその _後ろ_ に置くことを忘れないでください。
 
 ### Solution
 
@@ -59,14 +59,14 @@ p.interactive()
 
 ## Limited Space
 
-You won't always have enough overflow - perhaps you'll only have 7 or 8 bytes. What you can do in this scenario is make the shellcode after the RIP equivalent to something like
+オーバーフローできる量がいつも十分とは限りません。7、8バイトしかないこともあるでしょう。そのような場合にできるのは、RIP の後ろのシェルコードを、次のようなものと等価にすることです。
 
 ```text
 sub rsp, 0x20
 jmp rsp
 ```
 
-Where `0x20` is the offset between the current value of RSP and the start of the buffer. In the buffer itself, we put the main shellcode. Let's try that!
+ここで `0x20` は、RSP の現在の値とバッファの先頭との間のオフセットです。バッファ自体には、本体のシェルコードを置きます。やってみましょう。
 
 ```python
 from pwn import *
@@ -88,7 +88,7 @@ p.sendlineafter('RSP!\n', payload)
 p.interactive()
 ```
 
-The `10` is just a placeholder. Once we hit the `pause()`, we attach with radare2 and set a breakpoint on the `ret`, then continue. Once we hit it, we find the beginning of the `A` string and work out the offset between that and the current value of RSP - it's `128`!
+`10` は仮の値にすぎません。`pause()` に到達したら radare2 でアタッチし、`ret` にブレークポイントを設定して実行を続けます。そこに到達したら、`A` の文字列の先頭を探し、それと現在の RSP の値との間のオフセットを求めます。答えは `128` です。
 
 ### Solution
 
@@ -112,9 +112,8 @@ p.sendlineafter('RSP!\n', payload)
 p.interactive()
 ```
 
-We successfully pivoted back to our shellcode - and because all our addresses are relative, it's completely reliable! ASLR beaten with pure shellcode.
+シェルコードまでうまく戻る(ピボットする)ことができました。しかも、すべてのアドレスが相対的なので、完全に確実です。純粋なシェルコードだけで ASLR を打ち破りました。
 
 {% hint style="warning" %}
-This is harder with PIE as the location of `jmp rsp` will change, so you might have to leak PIE base!
+PIE が有効だと `jmp rsp` の位置が変わるため、これはより難しくなります。PIE のベースをリークする必要があるかもしれません。
 {% endhint %}
-

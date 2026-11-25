@@ -19,6 +19,9 @@ copyright: >-
 theme:
   name: material
   language: ja
+  font: false
+  logo: assets/minusone-mark.svg
+  favicon: assets/minusone-avatar-light.svg
   palette:
     - media: "(prefers-color-scheme: light)"
       scheme: default
@@ -216,6 +219,7 @@ nav:
 extra_css:
   - assets/ja-docs.css
   - assets/mkdocs.css
+  - assets/minusone.css
 
 extra_javascript:
   - assets/ja-docs.js

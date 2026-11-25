@@ -224,3 +224,5 @@ extra_css:
 
 extra_javascript:
   - assets/ja-docs.js
+  - assets/glossary-minusone.js
+  - assets/glossary.js

@@ -22,21 +22,15 @@ theme:
   palette:
     - media: "(prefers-color-scheme: light)"
       scheme: default
-      toggle:
-        icon: material/brightness-7
-        name: ダークモードに切り替え
     - media: "(prefers-color-scheme: dark)"
       scheme: slate
-      toggle:
-        icon: material/brightness-4
-        name: ライトモードに切り替え
   features:
     - navigation.indexes
     - navigation.top
+    - navigation.footer
     - navigation.tracking
     - search.highlight
     - search.suggest
-    - content.code.copy
 
 plugins:
   - search:
@@ -53,6 +47,7 @@ markdown_extensions:
   - pymdownx.superfences
   - pymdownx.highlight:
       anchor_linenums: true
+      pygments_lang_class: true
   - pymdownx.inlinehilite
   - pymdownx.tabbed:
       alternate_style: true
@@ -217,3 +212,10 @@ nav:
     - "C++ のデコンパイルのコツ": rev/c++-decompilation-tricks.md
     - "ARM のリバースエンジニアリング": rev/reverse-engineering-arm.md
   - "用語集": GLOSSARY.md
+
+extra_css:
+  - assets/ja-docs.css
+  - assets/mkdocs.css
+
+extra_javascript:
+  - assets/ja-docs.js

@@ -1,0 +1,15 @@
+{
+  "upstreams": [
+    {
+      "repo": "ir0nstone/cybersec-notes",
+      "branch": "master",
+      "paths": [
+        "binexp",
+        "rev",
+        "README.md",
+        "SUMMARY.md"
+      ],
+      "base": "9606cbb4d8cbef2cc7f33cc85e3391d218e576fa"
+    }
+  ]
+}
